@@ -17,6 +17,7 @@ ifeq ($(UNAME_S),linux)
 endif
 
 ifeq ($(UNAME_S),win32)
+	PROG_LDFLAGS += -ldinput8
 	VPATH += :win32
 endif
 
