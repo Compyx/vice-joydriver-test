@@ -1,17 +1,27 @@
+VPATH = shared
 PROG_CFLAGS = -O3 -g -std=c99 -D_XOPEN_SOURCE=700 \
 	      -Wall -Wextra -Wcast-qual -Wshadow -Wconversion -Wsign-compare \
 	      -Wformat -Wformat-security -Wmissing-prototypes -Wstrict-prototypes \
-	      -Ishared \
-	      `pkg-config --cflags libevdev` \
-	      `pkg-config --cflags libudev`
+	      -Ishared
 
-PROG_LDFLAGS = `pkg-config --libs libevdev` \
-	       `pkg-config --libs libudev`
+ifeq ($(OS),Windows_NT)
+	UNAME_S := win32
+else
+	UNAME_S := `uname -s`
+endif
 
+ifeq ($(UNAME_S),linux)
+	PROG_CFLAGS += `pkg-config --cflags libevdev`
+	PROG_LDFLAGS += `pkg-config --libs libevdev`
+	VPATH += :linux
+endif
+
+ifeq ($(UNAME_S),win32)
+	VPATH += :win32
+endif
 
 CC = gcc
 LD = $(CC)
-VPATH = linux:shared
 
 PROG = vice-joydriver-test
 OBJS = main.o cmdline.o lib.o joy.o joyapi.o

@@ -1,2 +1,4 @@
 *.[ao]
+*.swp
+*~
 vice-joydriver-test
