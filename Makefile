@@ -7,10 +7,10 @@ PROG_CFLAGS = -O3 -g -std=c99 -D_XOPEN_SOURCE=700 \
 ifeq ($(OS),Windows_NT)
 	UNAME_S := win32
 else
-	UNAME_S := `uname -s`
+	UNAME_S := $(shell uname -s)
 endif
 
-ifeq ($(UNAME_S),linux)
+ifeq ($(UNAME_S),Linux)
 	PROG_CFLAGS += `pkg-config --cflags libevdev`
 	PROG_LDFLAGS += `pkg-config --libs libevdev`
 	VPATH += :linux
