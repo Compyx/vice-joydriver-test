@@ -9,10 +9,6 @@
 #include "joyapi.h"
 
 
-#define BUTTON_LIST_INITIAL_SIZE    32
-
-
-
 joy_device_t *joy_device_new(void)
 {
     joy_device_t *dev = lib_malloc(sizeof *dev);

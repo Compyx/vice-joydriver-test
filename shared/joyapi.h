@@ -26,10 +26,10 @@ typedef struct joy_device_s {
     uint16_t    vendor;
     uint16_t    product;
 
-    uint16_t    num_buttons;
-    uint16_t    num_axes;
-    uint16_t    num_hats;
-    uint16_t    num_balls;
+    uint32_t    num_buttons;
+    uint32_t    num_axes;
+    uint32_t    num_hats;
+    uint32_t    num_balls;
 
     uint16_t   *buttons;
     joy_axis_t *axes;

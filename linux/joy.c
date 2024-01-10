@@ -9,6 +9,7 @@
 #include <string.h>
 #include <limits.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -84,7 +85,7 @@ static void scan_buttons(joy_device_t *joydev, struct libevdev *evdev)
             }
         }
     }
-    joydev->num_buttons = (uint16_t)num;
+    joydev->num_buttons = (uint32_t)num;
 }
 
 /** \brief  Test if an event code is a hat axis code
@@ -135,7 +136,7 @@ static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
             }
         }
     }
-    joydev->num_axes = (uint16_t)num;
+    joydev->num_axes = (uint32_t)num;
 }
 
 static joy_device_t *get_device_data(const char *node)
@@ -213,13 +214,16 @@ int joy_get_devices(joy_device_t ***devices)
 
             printf("node   : %s\n"
                    "name   : \"%s\"\n"
-                   "vendor : %04x\n"
-                   "product: %04x\n"
-                   "buttons: %u\n"
-                   "axes   : %u\n",
-                   dev->node, dev->name,
-                   (unsigned int)dev->vendor, (unsigned int)dev->product,
-                   (unsigned int)dev->num_buttons, (unsigned int)dev->num_axes);
+                   "vendor : %04"PRIx16"\n"
+                   "product: %04"PRIx16"\n"
+                   "buttons: %"PRIu32"\n"
+                   "axes   : %"PRIu32"\n",
+                   dev->node,
+                   dev->name,
+                   dev->vendor,
+                   dev->product,
+                   dev->num_buttons,
+                   dev->num_axes);
 
             list[num++] = dev;
         }
