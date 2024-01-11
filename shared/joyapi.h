@@ -19,25 +19,30 @@ typedef struct joy_axis_s {
     int32_t  resolution;
 } joy_axis_t;
 
+typedef struct joy_button_s {
+    uint16_t  code;
+    char     *name;
+} joy_button_t;
+
 typedef struct joy_hat_s {
     joy_axis_t x;
     joy_axis_t y;
 } joy_hat_t;
 
 typedef struct joy_device_s {
-    char       *name;
-    char       *node;
-    uint16_t    vendor;
-    uint16_t    product;
+    char         *name;
+    char         *node;
+    uint16_t      vendor;
+    uint16_t      product;
 
-    uint32_t    num_buttons;
-    uint32_t    num_axes;
-    uint32_t    num_hats;
-    uint32_t    num_balls;
+    uint32_t      num_buttons;
+    uint32_t      num_axes;
+    uint32_t      num_hats;
+    uint32_t      num_balls;
 
-    uint16_t   *buttons;
-    joy_axis_t *axes;
-    joy_hat_t  *hats;
+    joy_button_t *buttons;
+    joy_axis_t   *axes;
+    joy_hat_t    *hats;
 
     void       *priv;
 } joy_device_t;

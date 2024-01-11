@@ -1,5 +1,5 @@
 VPATH = shared
-PROG_CFLAGS = -O3 -g -std=c99 -D_XOPEN_SOURCE=700 \
+PROG_CFLAGS = -O3 -g -std=c99 \
 	      -Wall -Wextra -Wcast-qual -Wshadow -Wconversion -Wsign-compare \
 	      -Wformat -Wformat-security -Wmissing-prototypes -Wstrict-prototypes \
 	      -Ishared
@@ -11,7 +11,7 @@ else
 endif
 
 ifeq ($(UNAME_S),Linux)
-	PROG_CFLAGS += `pkg-config --cflags libevdev`
+	PROG_CFLAGS += `pkg-config --cflags libevdev` -D_XOPEN_SOURCE=700
 	PROG_LDFLAGS += `pkg-config --libs libevdev`
 	VPATH += :linux
 endif

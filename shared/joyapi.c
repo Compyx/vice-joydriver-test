@@ -36,9 +36,15 @@ joy_device_t *joy_device_new(void)
 
 void joy_device_free(joy_device_t *dev)
 {
+    uint32_t i;
+
     lib_free(dev->name);
     lib_free(dev->node);
+
     lib_free(dev->axes);
+    for (i = 0; i < dev->num_buttons; i++) {
+        lib_free(dev->buttons[i].name);
+    }
     lib_free(dev->buttons);
     lib_free(dev->hats);
     lib_free(dev);
