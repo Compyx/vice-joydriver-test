@@ -41,6 +41,111 @@ typedef struct {
     uint16_t y; /* Y axis */
 } hat_evcode_t;
 
+
+typedef struct {
+    unsigned int  code;
+    const char   *name;
+} ev_code_name_t;
+
+
+/* The XBox "profile" axis is a recent addition, from kernel ~6.1 onward, so we
+ * define it ourselves here.
+ * See https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?h=v6.1.56&id=1260cd04a601e0e02e09fa332111b8639611970d
+ */
+#ifndef ABS_PROFILE
+#define ABS_PROFILE 0x21
+#endif
+
+/** \brief  Button names */
+static const ev_code_name_t button_names[] = {
+    /* 0x100-0x109 - BTN_MISC */
+    { BTN_0,        "Btn0" },           { BTN_1,        "Btn1" },
+    { BTN_0,        "Btn2" },           { BTN_1,        "Btn3" },
+    { BTN_0,        "Btn4" },           { BTN_1,        "Btn5" },
+    { BTN_0,        "Btn6" },           { BTN_1,        "Btn7" },
+    { BTN_0,        "Btn8" },           { BTN_1,        "Btn9" },
+
+    /* 0x110-0x117 - BTN_MOUSE */
+    { BTN_LEFT,     "LeftBtn" },        { BTN_RIGHT,    "RightBtn" },
+    { BTN_MIDDLE,   "MiddleBtn" },      { BTN_SIDE,     "SideBtn" },
+    { BTN_EXTRA,    "ExtraBtn" },       { BTN_FORWARD,  "FowardBtn" },
+    { BTN_BACK,     "BackBtn" },        { BTN_TASK,     "TaskBtn" },
+
+    /* 0x120-0x12f - BTN_JOYSTICK */
+    { BTN_TRIGGER,  "Trigger" },        { BTN_THUMB,    "ThumbBtn" },
+    { BTN_THUMB2,   "ThumbBtn2" },      { BTN_TOP,      "TopBtn" },
+    { BTN_TOP2,     "TopBtn2" },        { BTN_PINKIE,   "PinkieButton" },
+    { BTN_BASE,     "BaseBtn" },        { BTN_BASE2,    "BaseBtn2" },
+    { BTN_BASE3,    "BaseBtn3" },       { BTN_BASE4,    "BaseBtn4" },
+    { BTN_BASE5,    "BaseBtn5" },       { BTN_BASE6,    "BaseBtn6" },
+    { BTN_DEAD,     "BtnDead" },
+
+    /* 0x130-0x13e - BTN_GAMEPAD */
+    { BTN_A,        "BtnA" },           { BTN_B,        "BtnB" },
+    { BTN_C,        "BtnC" },           { BTN_X,        "BtnX" },
+    { BTN_Y,        "BtnY" },           { BTN_Z,        "BtnZ" },
+    { BTN_TL,       "BtnTL" },          { BTN_TR,       "BtnTR" },
+    { BTN_TL2,      "BtnTL2" },         { BTN_TR2,      "BtnTR2" },
+    { BTN_SELECT,   "BtnSelect" },      { BTN_START,    "BtnStart" },
+    { BTN_MODE,     "BtnMode" },        { BTN_THUMBL,   "BtnThumbL" },
+    { BTN_THUMBR,   "BtnThumbR" },
+
+    /* Skipping 0x140-0x14f: BTN_TOOL_PEN - BTN_TOOL_QUADTAP */
+
+    /* 0x150-0x151: BTN_WHEEL */
+    { BTN_GEAR_DOWN, "GearDown" },      { BTN_GEAR_UP,  "GearUp" },
+
+    /* 0x220-0223 */
+    { BTN_DPAD_UP,   "BtnDPadUp" },     { BTN_DPAD_DOWN,  "BtnDPadDown" },
+    { BTN_DPAD_LEFT, "BtnDPadLeft" },   { BTN_DPAD_RIGHT, "BtnDPadRight" }
+};
+
+/** \brief  Axis names */
+static const ev_code_name_t axis_names[] = {
+    { ABS_X,            "X" },
+    { ABS_Y,            "Y" },
+    { ABS_Z,            "Z" },
+    { ABS_RX,           "Rx" },
+    { ABS_RY,           "Ry" },
+    { ABS_RZ,           "Rz" },
+    { ABS_THROTTLE,     "Throttle" },
+    { ABS_RUDDER,       "Rudder" },
+    { ABS_WHEEL,        "Wheel" },
+    { ABS_GAS,          "Gas" },
+    { ABS_BRAKE,        "Brake" },
+    { ABS_HAT0X,        "Hat0X" },
+    { ABS_HAT0Y,        "Hat0Y" },
+    { ABS_HAT1X,        "Hat1X" },
+    { ABS_HAT1Y,        "Hat1Y" },
+    { ABS_HAT2X,        "Hat2X" },
+    { ABS_HAT2Y,        "Hat2Y" },
+    { ABS_HAT3X,        "Hat3X" },
+    { ABS_HAT3Y,        "Hat3Y" },
+    { ABS_PRESSURE,     "Pressure" },
+    { ABS_DISTANCE,     "Distance" },
+    { ABS_TILT_X,       "XTilt" },
+    { ABS_TILT_Y,       "YTilt" },
+    { ABS_TOOL_WIDTH,   "ToolWidth" },
+    { ABS_VOLUME,       "Volume" },
+    { ABS_PROFILE,      "Profile" },
+    { ABS_MISC,         "Misc" }
+};
+
+/** \brief  Hat names
+ *
+ * Each of two hat axes maps to the same name.
+ */
+static const ev_code_name_t hat_names[] = {
+    { ABS_HAT0X,    "Hat0" },
+    { ABS_HAT0Y,    "Hat0" },
+    { ABS_HAT1X,    "Hat1" },
+    { ABS_HAT1Y,    "Hat1" },
+    { ABS_HAT2X,    "Hat2" },
+    { ABS_HAT2Y,    "Hat2" },
+    { ABS_HAT3X,    "Hat3" },
+    { ABS_HAT3Y,    "Hat3" },
+};
+
 /** \brief X and Y axes for the four hats found in `linux/input-event-codes.h` */
 static const hat_evcode_t hat_event_codes[] = {
     { ABS_HAT0X, ABS_HAT0Y },
@@ -49,6 +154,35 @@ static const hat_evcode_t hat_event_codes[] = {
     { ABS_HAT3X, ABS_HAT3Y }
 };
 
+
+static const char *get_event_code_name(const ev_code_name_t *list,
+                                       size_t                length,
+                                       unsigned int          code)
+{
+    for (size_t i = 0; i < length; i++) {
+        if (list[i].code == code) {
+            return list[i].name;
+        } else if (list[i].code > code) {
+            break;
+        }
+    }
+    return NULL;
+}
+
+static const char *get_axis_name(unsigned int code)
+{
+    return get_event_code_name(axis_names, ARRAY_LEN(axis_names), code);
+}
+
+static const char *get_button_name(unsigned int code)
+{
+    return get_event_code_name(button_names, ARRAY_LEN(button_names), code);
+}
+
+static const char *get_hat_name(unsigned int code)
+{
+    return get_event_code_name(hat_names, ARRAY_LEN(hat_names), code);
+}
 
 static int node_filter(const struct dirent *de)
 {
@@ -77,7 +211,6 @@ static char *node_full_path(const char *node)
     return path;
 }
 
-
 static void scan_buttons(joy_device_t *joydev, struct libevdev *evdev)
 {
     uint32_t num = 0;
@@ -91,12 +224,17 @@ static void scan_buttons(joy_device_t *joydev, struct libevdev *evdev)
 
         for (code = BTN_MISC; code < KEY_MAX && num < UINT16_MAX; code++) {
             if (libevdev_has_event_code(evdev, EV_KEY, code)) {
+                joy_button_t *button;
+
                 if (num == size) {
                     size *= 2u;
                     joydev->buttons = lib_realloc(joydev->buttons,
                                                   size * sizeof *(joydev->buttons));
                 }
-                joydev->buttons[num++] = (uint16_t)code;
+                button = &(joydev->buttons[num++]);
+                button->code = (uint16_t)code;
+                button->name = lib_strdup(get_button_name(code));
+                printf("%s\n", button->name);
             }
         }
     }
