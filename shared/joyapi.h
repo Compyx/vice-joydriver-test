@@ -43,9 +43,10 @@ void joy_free_devices(joy_device_t **devices);
 
 joy_device_t *joy_device_new(void);
 void          joy_device_free(joy_device_t *dev);
+void          joy_device_dump(const joy_device_t *dev, bool verbose);
 
-
-const char   *joy_device_get_button_name(joy_device_t *dev, uint16_t code);
-const char   *joy_device_get_axis_name  (joy_device_t *dev, uint16_t code);
+const char   *joy_device_get_button_name(const joy_device_t *dev, uint16_t code);
+const char   *joy_device_get_axis_name  (const joy_device_t *dev, uint16_t code);
+const char   *joy_device_get_hat_name   (const joy_device_t *dev, uint16_t code);
 
 #endif

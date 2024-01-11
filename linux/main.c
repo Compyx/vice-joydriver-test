@@ -51,10 +51,30 @@ int main(int argc, char **argv)
             printf("%d: %s\n", i, args[i]);
         }
     }
-    printf("verbose = %s\n", opt_verbose ? "true" : "false");
+//    printf("verbose = %s\n", opt_verbose ? "true" : "false");
 
     count = joy_get_devices(&devices);
-    printf("found %d devices.\n", count);
+    if (count == 0) {
+        printf("found no devices.\n");
+    } else if (count == 1) {
+        printf("found 1 device:\n");
+    } else if (count > 1) {
+        printf("found %d devices.\n", count);
+    } else {
+        printf("error querying devices.\n");
+        status = EXIT_FAILURE;
+    }
+    if (count > 0) {
+        for (int i = 0; i < count; i++) {
+            if (opt_verbose) {
+                printf("device %d:\n", i);
+            }
+            joy_device_dump(devices[i], opt_verbose);
+            if (opt_verbose) {
+                printf("----\n");
+            }
+        }
+    }
 
 cleanup:
     joy_free_devices(devices);

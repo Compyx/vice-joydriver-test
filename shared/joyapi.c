@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "lib.h"
 
@@ -39,4 +40,31 @@ void joy_device_free(joy_device_t *dev)
     lib_free(dev->axes);
     lib_free(dev->buttons);
     lib_free(dev);
+}
+
+
+#define null_str(s) ((s) != NULL ? (s) : "(null)")
+
+/** \brief  Print information on joystick device on stdout
+ *
+ * \param[in]   dev     joystick device
+ * \param[in]   verbose be verbose
+ */
+void joy_device_dump(const joy_device_t *dev, bool verbose)
+{
+    if (verbose) {
+        printf("name   : %s\n", null_str(dev->name));
+        printf("node   : %s\n", null_str(dev->node));
+        printf("vendor : %04"PRIx16"\n", dev->vendor);
+        printf("product: %04"PRIx16"\n", dev->product);
+        printf("buttons: %"PRIu32"\n", dev->num_buttons);
+        printf("axes   : %"PRIu32"\n", dev->num_axes);
+        printf("hats   : %"PRIu32"\n", dev->num_hats);
+    } else {
+        printf("%s (%"PRIu32" %s, %"PRIu32" %s, %"PRIu32" %s)\n",
+               null_str(dev->name),
+               dev->num_buttons, dev->num_buttons == 1u ? "button" : "buttons",
+               dev->num_axes, dev->num_axes == 1u ? "axis" : "axes",
+               dev->num_hats, dev->num_hats == 1u ? "hat" : "hats");
+    }
 }

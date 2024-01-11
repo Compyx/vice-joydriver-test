@@ -211,7 +211,7 @@ int joy_get_devices(joy_device_t ***devices)
                 size *= 2u;
                 list  = lib_realloc(list, size * sizeof *list);
             }
-
+#if 0
             printf("node   : %s\n"
                    "name   : \"%s\"\n"
                    "vendor : %04"PRIx16"\n"
@@ -224,7 +224,7 @@ int joy_get_devices(joy_device_t ***devices)
                    dev->product,
                    dev->num_buttons,
                    dev->num_axes);
-
+#endif
             list[num++] = dev;
         }
         lib_free(node);

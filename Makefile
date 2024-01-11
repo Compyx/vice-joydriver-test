@@ -27,6 +27,12 @@ LD = $(CC)
 PROG = vice-joydriver-test
 OBJS = main.o cmdline.o lib.o joy.o joyapi.o
 
+all: $(PROG)
+
+cmdline.o: lib.o
+joy.o: lib.o joyapi.o
+main.o: cmdline.o joy.o joyapi.o lib.o
+
 $(PROG): $(OBJS)
 	$(LD) -o $@ $^ $(PROG_LDFLAGS) $(LDFLAGS)
 
