@@ -234,7 +234,7 @@ static void scan_buttons(joy_device_t *joydev, struct libevdev *evdev)
                 button = &(joydev->buttons[num++]);
                 button->code = (uint16_t)code;
                 button->name = lib_strdup(get_button_name(code));
-                printf("%s\n", button->name);
+                //printf("%s\n", button->name);
             }
         }
     }
@@ -275,6 +275,8 @@ static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
                 axis    = &(joydev->axes[num]);
                 memset(axis, 0, sizeof *axis);
                 axis->code = (uint16_t)code;
+                axis->name = lib_strdup(get_axis_name(code));
+                //printf("axis name = %s\n", axis->name);
                 if (absinfo != NULL) {
                     axis->minimum    = absinfo->minimum;
                     axis->maximum    = absinfo->maximum;
@@ -348,6 +350,9 @@ static void scan_hats(joy_device_t *joydev, struct libevdev *evdev)
                     y_axis->minimum    = INT16_MIN;
                     y_axis->maximum    = INT16_MAX;
                 }
+
+                hat->name = lib_strdup(get_hat_name(x_code));
+                //printf("hat name = %s\n", hat->name);
 
                 num++;
             }

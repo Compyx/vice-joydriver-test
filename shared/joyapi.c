@@ -41,12 +41,23 @@ void joy_device_free(joy_device_t *dev)
     lib_free(dev->name);
     lib_free(dev->node);
 
+    for (i = 0; i < dev->num_axes; i++) {
+        lib_free(dev->axes[i].name);
+    }
     lib_free(dev->axes);
+
     for (i = 0; i < dev->num_buttons; i++) {
         lib_free(dev->buttons[i].name);
     }
     lib_free(dev->buttons);
+
+    for (i = 0; i < dev->num_hats; i++) {
+        lib_free(dev->hats[i].x.name);
+        lib_free(dev->hats[i].y.name);
+        lib_free(dev->hats[i].name);
+    }
     lib_free(dev->hats);
+
     lib_free(dev);
 }
 

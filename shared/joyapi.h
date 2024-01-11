@@ -10,23 +10,26 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct joy_axis_s {
-    uint16_t code;
-    int32_t  minimum;
-    int32_t  maximum;
-    int32_t  fuzz;
-    int32_t  flat;
-    int32_t  resolution;
-} joy_axis_t;
 
 typedef struct joy_button_s {
     uint16_t  code;
     char     *name;
 } joy_button_t;
 
+typedef struct joy_axis_s {
+    uint16_t  code;
+    char     *name;
+    int32_t   minimum;
+    int32_t   maximum;
+    int32_t   fuzz;
+    int32_t   flat;
+    int32_t   resolution;
+} joy_axis_t;
+
 typedef struct joy_hat_s {
-    joy_axis_t x;
-    joy_axis_t y;
+    char        *name;
+    joy_axis_t   x;
+    joy_axis_t   y;
 } joy_hat_t;
 
 typedef struct joy_device_s {
