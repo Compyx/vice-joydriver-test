@@ -11,12 +11,13 @@ else
 endif
 
 ifeq ($(UNAME_S),Linux)
-	PROG_CFLAGS += `pkg-config --cflags libevdev` -D_XOPEN_SOURCE=700
+	PROG_CFLAGS += `pkg-config --cflags libevdev` -D_XOPEN_SOURCE=700 -DUNIX_COMPILE -DLINUX_COMPILE
 	PROG_LDFLAGS += `pkg-config --libs libevdev`
 	VPATH += :linux
 endif
 
 ifeq ($(UNAME_S),win32)
+	PROG_CLAGS += -DWINDOWS_COMPILE
 	PROG_LDFLAGS += -ldinput8
 	VPATH += :win32
 endif
