@@ -19,6 +19,10 @@ typedef struct joy_axis_s {
     int32_t  resolution;
 } joy_axis_t;
 
+typedef struct joy_hat_s {
+    joy_axis_t x;
+    joy_axis_t y;
+} joy_hat_t;
 
 typedef struct joy_device_s {
     char       *name;
@@ -33,6 +37,7 @@ typedef struct joy_device_s {
 
     uint16_t   *buttons;
     joy_axis_t *axes;
+    joy_hat_t  *hats;
 
     void       *priv;
 } joy_device_t;

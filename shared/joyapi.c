@@ -26,6 +26,7 @@ joy_device_t *joy_device_new(void)
 
     dev->buttons     = NULL;
     dev->axes        = NULL;
+    dev->hats        = NULL;
 
     dev->priv        = NULL;
 
@@ -39,6 +40,7 @@ void joy_device_free(joy_device_t *dev)
     lib_free(dev->node);
     lib_free(dev->axes);
     lib_free(dev->buttons);
+    lib_free(dev->hats);
     lib_free(dev);
 }
 

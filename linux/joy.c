@@ -34,6 +34,21 @@
 #define NODE_PREFIX             "event"
 #define NODE_PREFIX_LEN         5
 
+/** \brief  Hat event codes for both axes
+ */
+typedef struct {
+    uint16_t x; /* X axis */
+    uint16_t y; /* Y axis */
+} hat_evcode_t;
+
+/** \brief X and Y axes for the four hats found in `linux/input-event-codes.h` */
+static const hat_evcode_t hat_event_codes[] = {
+    { ABS_HAT0X, ABS_HAT0Y },
+    { ABS_HAT1X, ABS_HAT1Y },
+    { ABS_HAT2X, ABS_HAT2Y },
+    { ABS_HAT3X, ABS_HAT3Y }
+};
+
 
 static int node_filter(const struct dirent *de)
 {
@@ -65,7 +80,7 @@ static char *node_full_path(const char *node)
 
 static void scan_buttons(joy_device_t *joydev, struct libevdev *evdev)
 {
-    size_t num = 0;
+    uint32_t num = 0;
 
     if (libevdev_has_event_type(evdev, EV_KEY)) {
         size_t       size;
@@ -85,7 +100,7 @@ static void scan_buttons(joy_device_t *joydev, struct libevdev *evdev)
             }
         }
     }
-    joydev->num_buttons = (uint32_t)num;
+    joydev->num_buttons = num;
 }
 
 /** \brief  Test if an event code is a hat axis code
@@ -98,7 +113,7 @@ static void scan_buttons(joy_device_t *joydev, struct libevdev *evdev)
 
 static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
 {
-    size_t num = 0;
+    uint32_t num = 0;
 
     if (libevdev_has_event_type(evdev, EV_ABS)) {
         unsigned int code;
@@ -136,7 +151,72 @@ static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
             }
         }
     }
-    joydev->num_axes = (uint32_t)num;
+    joydev->num_axes = num;
+}
+
+static void scan_hats(joy_device_t *joydev, struct libevdev *evdev)
+{
+    uint32_t num = 0;
+
+    if (libevdev_has_event_type(evdev, EV_ABS)) {
+        size_t h;
+
+        /* only four hats defined in `input-event-codes.h`, so we simply allocate
+         * space for four hats */
+        joydev->hats = lib_malloc(HATS_INITIAL_SIZE * sizeof *(joydev->hats));
+
+        for (h = 0; h < ARRAY_LEN(hat_event_codes); h++) {
+            uint16_t x_code = hat_event_codes[h].x;
+            uint16_t y_code = hat_event_codes[h].y;
+
+            if (libevdev_has_event_code(evdev, EV_ABS, x_code) &&
+                    libevdev_has_event_code(evdev, EV_ABS, y_code)) {
+
+                const struct input_absinfo *absinfo;
+                joy_hat_t                  *hat;
+                joy_axis_t                 *x_axis;
+                joy_axis_t                 *y_axis;
+
+                hat    = &(joydev->hats[num]);
+                x_axis = &(hat->x);
+                y_axis = &(hat->y);
+
+                /* X axis */
+                absinfo = libevdev_get_abs_info(evdev, x_code);
+                memset(x_axis, 0, sizeof *x_axis);
+                x_axis->code = x_code;
+                if (absinfo != NULL) {
+                    x_axis->minimum    = absinfo->minimum;
+                    x_axis->maximum    = absinfo->maximum;
+                    x_axis->fuzz       = absinfo->fuzz;
+                    x_axis->flat       = absinfo->flat;
+                    x_axis->resolution = absinfo->resolution;
+                } else {
+                    x_axis->minimum    = INT16_MIN;
+                    x_axis->maximum    = INT16_MAX;
+                }
+
+                /* Y axis */
+                absinfo = libevdev_get_abs_info(evdev, y_code);
+                memset(y_axis, 0, sizeof *y_axis);
+                y_axis->code = y_code;
+                if (absinfo != NULL) {
+                    y_axis->minimum    = absinfo->minimum;
+                    y_axis->maximum    = absinfo->maximum;
+                    y_axis->fuzz       = absinfo->fuzz;
+                    y_axis->flat       = absinfo->flat;
+                    y_axis->resolution = absinfo->resolution;
+                } else {
+                    y_axis->minimum    = INT16_MIN;
+                    y_axis->maximum    = INT16_MAX;
+                }
+
+                num++;
+            }
+        }
+    }
+
+    joydev->num_hats = num;
 }
 
 static joy_device_t *get_device_data(const char *node)
@@ -173,6 +253,7 @@ static joy_device_t *get_device_data(const char *node)
 
     scan_buttons(joydev, evdev);
     scan_axes(joydev, evdev);
+    scan_hats(joydev, evdev);
 
     libevdev_free(evdev);
     close(fd);
