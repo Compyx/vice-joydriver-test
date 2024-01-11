@@ -31,6 +31,14 @@ int main(int argc, char **argv)
     joy_device_t **devices = NULL;
     int            count;
 
+#if defined(LINUX_COMPILE)
+    printf("Running on Linux.\n");
+#elif defined(WINDOWS_COMPILE)
+    printf("Running on Windows.\n");
+#else
+    printf("Running on unknown OS.\n");
+#endif
+
     cmdline_init(PROGRAM_NAME, PROGRAM_VERSION);
     if (!cmdline_add_options(options)) {
         cmdline_free();
