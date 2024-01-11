@@ -17,7 +17,7 @@ ifeq ($(UNAME_S),Linux)
 endif
 
 ifeq ($(UNAME_S),win32)
-	PROG_CLAGS += -DWINDOWS_COMPILE
+	PROG_CFLAGS += -DWINDOWS_COMPILE
 	PROG_LDFLAGS += -ldinput8
 	VPATH += :win32
 endif

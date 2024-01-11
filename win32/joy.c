@@ -9,7 +9,14 @@
 #include "lib.h"
 #include "joyapi.h"
 
-/** \brief  Iterator object used for the button enumerator callback */
+/** \brief  Iterator used for the devices enumerator callback */
+typedef struct {
+    joy_device_t **list;    /**< list of devices */
+    size_t         size;    /**< number of allocated elements in \c list */
+    size_t         index;   /**< index in \c list */
+} device_iter_t;
+
+/** \brief  Iterator used for the button enumerator callback */
 typedef struct {
     joy_device_t *joydev;   /**< current joystick device */
     joy_button_t *list;     /**< list of buttons */
@@ -17,22 +24,16 @@ typedef struct {
     size_t        index;    /**< index in \c list */
 } button_iter_t;
 
+
 /* "01234567-0123-0123-0123-0123456789AB\0" */
 #define GUIDSTR_BUFSIZE 37u
 
-
+/** \brief  Initial number of elements allocated for the buttons list */
 #define BUTTONS_INITIAL_SIZE    32
 
 
 /** \brief  Global DirectInput8 interface handle */
 static LPDIRECTINPUT8 dinput_handle = NULL;
-
-/** \brief  device list (used during querying) */
-static joy_device_t **device_list = NULL;
-/** \brief  device list index (used during querying) */
-static size_t         device_list_index = 0;
-/** \brief  device list allocated size (used during querying) */
-static size_t         device_list_size = 0;
 
 
 /** \brief  Transform a WinAPI "GUID" to string
@@ -62,7 +63,7 @@ static void guid_to_string(GUID guid, char *buffer)
  *
  * \return  \c DIENUM_CONTINUE or \c DIEENUM_STOP on error
  */
-static BOOL enumbuttons_callback(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
+static BOOL EnumButtons_cb(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
 {
     button_iter_t *iter = pvref;
     joy_button_t  *button;
@@ -84,6 +85,12 @@ static BOOL enumbuttons_callback(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
     return DIENUM_CONTINUE;
 }
 
+#if 0
+static BOOL EnumAxes_cb(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
+{
+    return DIENUM_CONTINUE;
+}
+#endif
 
 /** \brief  Callback for directintput8::EnumDevices()
  *
@@ -92,7 +99,7 @@ static BOOL enumbuttons_callback(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
  *
  * \return  \c DIENUM_CONTINUE
  */
-static BOOL enumdevices_callback(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
+static BOOL EnumDevices_cb(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
 {
     joy_device_t         *joydev;
     DIDEVCAPS             caps;
@@ -101,8 +108,13 @@ static BOOL enumdevices_callback(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
     uint16_t              product;
     char                  instance_str[GUIDSTR_BUFSIZE];
     HRESULT               result;
-
+    HINSTANCE             window;
+    device_iter_t        *device_iter;
     button_iter_t         button_iter;
+
+    window = GetModuleHandle(NULL);
+    device_iter = pvref;
+
 
     /* get capabilities of device */
     result = IDirectInput8_CreateDevice(dinput_handle,
@@ -114,7 +126,7 @@ static BOOL enumdevices_callback(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
     }
     IDirectInputDevice8_SetDataFormat(didev, &c_dfDIJoystick);
     IDirectInputDevice8_SetCooperativeLevel(didev,
-                                            (HWND)pvref,
+                                            (HWND)window,
                                             DISCL_NONEXCLUSIVE|DISCL_BACKGROUND);
     caps.dwSize = sizeof(DIDEVCAPS);
     result = IDirectInputDevice8_GetCapabilities(didev, &caps);
@@ -126,12 +138,14 @@ static BOOL enumdevices_callback(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
     product = (uint16_t)((ddi->guidProduct.Data1 >> 16u) & 0xffff);
     guid_to_string(ddi->guidInstance, instance_str);
 
-    if (device_list_index == device_list_size - 1u) {
-        device_list_size *= 2u;
-        device_list       = lib_realloc(device_list,
-                            device_list_size * sizeof *device_list);
+    /* resize list if required (-1 for the terminating NULL) */
+    if (device_iter->index == device_iter->size - 1u) {
+        device_iter->size *= 2u;
+        device_iter->list  = lib_realloc(device_iter->list,
+                                         device_iter->size * sizeof *(device_iter->list));
     }
-    joydev = joy_device_new();
+
+    joydev              = joy_device_new();
     joydev->name        = lib_strdup(ddi->tszProductName);
     joydev->node        = lib_strdup(instance_str);
     joydev->vendor      = vendor;
@@ -142,18 +156,17 @@ static BOOL enumdevices_callback(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
 
     /* scan buttons */
     button_iter.joydev = joydev;
+    button_iter.index  = 0;
     button_iter.size   = BUTTONS_INITIAL_SIZE;
     button_iter.list   = lib_malloc(joydev->num_buttons * sizeof *(button_iter.list));
-    button_iter.index  = 0;
     IDirectInputDevice8_EnumObjects(didev,
-                                    enumbuttons_callback,
+                                    EnumButtons_cb,
                                     (LPVOID)&button_iter,
                                     DIDFT_BUTTON);
     joydev->buttons = button_iter.list;
 
-    device_list[device_list_index + 0u] = joydev;
-    device_list[device_list_index + 1u] = NULL;
-    device_list_index++;
+    device_iter->list[device_iter->index++] = joydev;
+    device_iter->list[device_iter->index]   = NULL;
 
     IDirectInputDevice8_Release(didev);
     return DIENUM_CONTINUE;
@@ -162,12 +175,13 @@ static BOOL enumdevices_callback(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
 
 int joy_get_devices(joy_device_t ***devices)
 {
-    HRESULT   result;
-    HINSTANCE window_handle;
+    HRESULT       result;
+    HINSTANCE     window;
+    device_iter_t iter;
 
-    window_handle = GetModuleHandle(NULL);
+    window = GetModuleHandle(NULL);
 
-    result = DirectInput8Create(window_handle,
+    result = DirectInput8Create(window,
                                 DIRECTINPUT_VERSION,
                                 &IID_IDirectInput8,
                                 (void*)&dinput_handle,
@@ -177,22 +191,23 @@ int joy_get_devices(joy_device_t ***devices)
         return -1;
     }
 
-    device_list_index = 0;
-    device_list_size  = 32u;
-    device_list       = lib_malloc(device_list_size * sizeof *device_list);
-    device_list[0]    = NULL;
+    /* initialize iterator for use in the callback */
+    iter.size    = 32u;
+    iter.index   = 0;
+    iter.list    = lib_malloc(iter.size * sizeof *(iter.list));
+    iter.list[0] = NULL;
 
     result = IDirectInput8_EnumDevices(dinput_handle,
                                        DIDEVTYPE_JOYSTICK,
-                                       enumdevices_callback,
-                                       window_handle,
+                                       EnumDevices_cb,
+                                       (LPVOID)&iter,
                                        DIEDFL_ALLDEVICES);
     if (result != 0) {
         return -1;
     }
 
-    *devices = device_list;
-    return (int)device_list_index;
+    *devices = iter.list;
+    return (int)iter.index;
 }
 
 
