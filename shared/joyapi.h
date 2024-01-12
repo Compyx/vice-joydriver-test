@@ -11,49 +11,58 @@
 #include <stdint.h>
 
 
+/** \brief  Joystick button object */
 typedef struct joy_button_s {
-    uint16_t  code;
-    char     *name;
+    uint16_t  code;     /**< event code */
+    char     *name;     /**< name */
 } joy_button_t;
 
+/** \brief  Joystick axis object */
 typedef struct joy_axis_s {
-    uint16_t  code;
-    char     *name;
-    int32_t   minimum;
-    int32_t   maximum;
-    int32_t   fuzz;
-    int32_t   flat;
-    int32_t   resolution;
-    uint32_t  granularity;
+    uint16_t  code;             /**< event code */
+    char     *name;             /**< name */
+    int32_t   minimum;          /**< minimum value */
+    int32_t   maximum;          /**< maximum value */
+    int32_t   fuzz;             /**< noise removed by dev driver (Linux) */
+    int32_t   flat;             /**< flat (Linux only) */
+    int32_t   resolution;       /**< resolution of axis (units per mm) */
+    uint32_t  granularity;      /**< granularity of reported values (Windows) */
 } joy_axis_t;
 
+/** \brief  Joystick hat object */
 typedef struct joy_hat_s {
-    char        *name;
-    joy_axis_t   x;
-    joy_axis_t   y;
+    char        *name;  /**< name */
+    joy_axis_t   x;     /**< X axis */
+    joy_axis_t   y;     /**< Y axis */
 } joy_hat_t;
 
+/** \brief  Joystick device object */
 typedef struct joy_device_s {
-    char         *name;
-    char         *node;
-    uint16_t      vendor;
-    uint16_t      product;
+    char         *name;             /**< name */
+    char         *node;             /**< device node (Unix) or instance GUID
+                                         (Windows) */
+    uint16_t      vendor;           /**< vendor ID */
+    uint16_t      product;          /**< product ID */
 
-    uint32_t      num_buttons;
-    uint32_t      num_axes;
-    uint32_t      num_hats;
-    uint32_t      num_balls;
+    uint32_t      num_buttons;      /**< number of buttons */
+    uint32_t      num_axes;         /**< number of axes */
+    uint32_t      num_hats;         /**< number of hats */
+    uint32_t      num_balls;        /**< UNUSED, no API mentions anything about
+                                         "balls" */
 
-    joy_button_t *buttons;
-    joy_axis_t   *axes;
-    joy_hat_t    *hats;
+    joy_button_t *buttons;          /**< list of buttons */
+    joy_axis_t   *axes;             /**< list of axes */
+    joy_hat_t    *hats;             /**< list of hats */
 
-    void       *priv;
+    void         *priv;             /**< UNUSED so far, can be used for driver-
+                                         or OS-specific data if absolutely
+                                         required */
 } joy_device_t;
 
 
-int  joy_get_devices(joy_device_t ***devices);
-void joy_free_devices(joy_device_t **devices);
+/* TODO: rename these two? */
+int           joy_get_devices (joy_device_t ***devices);
+void          joy_free_devices(joy_device_t  **devices);
 
 joy_device_t *joy_device_new (void);
 void          joy_device_free(joy_device_t *dev);
