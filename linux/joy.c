@@ -232,6 +232,7 @@ static void scan_buttons(joy_device_t *joydev, struct libevdev *evdev)
                                                   size * sizeof *(joydev->buttons));
                 }
                 button = &(joydev->buttons[num++]);
+                joy_button_init(button);
                 button->code = (uint16_t)code;
                 button->name = lib_strdup(get_button_name(code));
                 //printf("%s\n", button->name);
@@ -273,7 +274,7 @@ static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
 
                 absinfo = libevdev_get_abs_info(evdev, code);
                 axis    = &(joydev->axes[num]);
-                memset(axis, 0, sizeof *axis);
+                joy_axis_init(axis);
                 axis->code = (uint16_t)code;
                 axis->name = lib_strdup(get_axis_name(code));
                 //printf("axis name = %s\n", axis->name);
@@ -320,6 +321,7 @@ static void scan_hats(joy_device_t *joydev, struct libevdev *evdev)
                 hat    = &(joydev->hats[num]);
                 x_axis = &(hat->x);
                 y_axis = &(hat->y);
+                joy_hat_init(hat);  /* also initializes the axes */
 
                 /* X axis */
                 absinfo = libevdev_get_abs_info(evdev, x_code);
