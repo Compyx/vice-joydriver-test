@@ -24,6 +24,7 @@ typedef struct joy_axis_s {
     int32_t   fuzz;
     int32_t   flat;
     int32_t   resolution;
+    uint32_t  granularity;
 } joy_axis_t;
 
 typedef struct joy_hat_s {
@@ -54,12 +55,16 @@ typedef struct joy_device_s {
 int  joy_get_devices(joy_device_t ***devices);
 void joy_free_devices(joy_device_t **devices);
 
-joy_device_t *joy_device_new(void);
+joy_device_t *joy_device_new (void);
 void          joy_device_free(joy_device_t *dev);
 void          joy_device_dump(const joy_device_t *dev, bool verbose);
 
 const char   *joy_device_get_button_name(const joy_device_t *dev, uint16_t code);
 const char   *joy_device_get_axis_name  (const joy_device_t *dev, uint16_t code);
 const char   *joy_device_get_hat_name   (const joy_device_t *dev, uint16_t code);
+
+void          joy_axis_init  (joy_axis_t   *axis);
+void          joy_button_init(joy_button_t *button);
+void          joy_hat_init   (joy_hat_t    *hat);
 
 #endif

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <inttypes.h>
+#include <limits.h>
 
 #include "lib.h"
 
@@ -21,7 +22,7 @@ joy_device_t *joy_device_new(void)
 
     dev->num_buttons = 0;
     dev->num_axes    = 0;
-    dev->num_hats    = 0;
+    dev->num_hats  = 0;
     dev->num_balls   = 0;
 
     dev->buttons     = NULL;
@@ -92,4 +93,30 @@ void joy_device_dump(const joy_device_t *dev, bool verbose)
                dev->num_axes, dev->num_axes == 1u ? "axis" : "axes",
                dev->num_hats, dev->num_hats == 1u ? "hat" : "hats");
     }
+}
+
+
+void joy_axis_init(joy_axis_t *axis)
+{
+    axis->code       = 0;
+    axis->name       = NULL;
+    axis->minimum     = INT16_MIN;
+    axis->maximum     = INT16_MAX;
+    axis->fuzz        = 0;
+    axis->flat        = 0;
+    axis->resolution  = 1;
+    axis->granularity = 1;
+}
+
+void joy_button_init(joy_button_t *button)
+{
+    button->code = 0;
+    button->name = NULL;
+}
+
+void joy_hat_init(joy_hat_t *hat)
+{
+    hat->name = NULL;
+    joy_axis_init(&(hat->x));
+    joy_axis_init(&(hat->y));
 }
