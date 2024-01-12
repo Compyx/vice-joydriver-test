@@ -204,10 +204,8 @@ static int handle_long_option(const char *arg1, const char *arg2)
     if (assign != NULL) {
         name  = lib_strndup(arg1 + 2, (size_t)(assign - arg1 - 2));
         arg2  = assign + 1;
-        delta = 0;
     } else {
         name  = lib_strdup(arg1 + 2);
-        delta = 1;
     }
 
     option = find_long_option(name);
@@ -221,6 +219,12 @@ static int handle_long_option(const char *arg1, const char *arg2)
                 prg_name, name);
         lib_free(name);
         return CMDLINE_ERROR;
+    }
+
+    if (assign != NULL || option->type == CMDLINE_BOOLEAN) {
+        delta = 0;
+    } else {
+        delta = 1;
     }
 
     lib_free(name);
@@ -297,7 +301,10 @@ bool cmdline_add_options(const cmdline_opt_t *options)
 
 void cmdline_show_help(void)
 {
-    printf("%s -- help\n\n", prg_name);
+    printf("%s :: help\n\n", prg_name);
+
+    printf("  -h, --help                            show help\n");
+    printf("      --version                         show program version\n\n");
 
     for (size_t i = 0; i < opts_list_count; i++) {
         const cmdline_opt_t *opt = opts_list[i];
@@ -308,12 +315,12 @@ void cmdline_show_help(void)
         } else if (opt->short_name > 0) {
             col = printf("  %-c", opt->short_name);
         } else {
-            col = printf("  --%s", opt->long_name);
+            col = printf("      --%s", opt->long_name);
         }
         if (opt->type == CMDLINE_INTEGER || opt->type == CMDLINE_STRING) {
             col += printf(" <%s>", opt->param != NULL ? opt->param : "ARG");
         }
-        while (col++ < 32) {
+        while (col++ < 40) {
             putchar(' ');
         }
         printf("%s\n", opt->help);
@@ -333,7 +340,7 @@ int cmdline_parse(int argc, char **argv, char ***arglist)
 
     for (i = 1; i < argc; i++) {
         // printf("%s(): parsing '%s'\n", __func__, argv[i]);
-        if (strcmp(argv[i], "--help") == 0) {
+        if ((strcmp(argv[i], "--help") == 0) || (strcmp(argv[i], "-h") == 0)) {
             cmdline_show_help();
             return CMDLINE_HELP;
         }
