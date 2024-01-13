@@ -96,6 +96,18 @@ void joy_device_dump(const joy_device_t *dev, bool verbose)
 }
 
 
+joy_device_t *joy_device_get(joy_device_t **devices, const char *node)
+{
+    if (devices != NULL && node != NULL) {
+        for (size_t i = 0; devices[i] != NULL; i++) {
+            if (strcmp(devices[i]->node, node) == 0) {
+                return devices[i];
+            }
+        }
+    }
+    return NULL;
+}
+
 void joy_axis_init(joy_axis_t *axis)
 {
     axis->code       = 0;
