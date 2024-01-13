@@ -34,6 +34,16 @@ typedef struct {
     size_t                index;    /**< index in \a list */
 } axis_iter_t;
 
+/** \brief  Iterator used for the hat (POV) enumator callback */
+typedef struct {
+    joy_device_t         *joydev;
+    LPDIRECTINPUTDEVICE8  didev;
+    joy_hat_t            *list;
+    size_t                size;
+    size_t                index;
+} hat_iter_t;
+
+
 /** \brief  Initialize EnumDevices callback iterator
  *
  * \param[in]   iter    iterator
@@ -67,6 +77,8 @@ typedef struct {
 /** \brief  Initial number of elements allocated for the axes list */
 #define AXES_INITIAL_SIZE   16
 
+/** \brief  Initial number of elements allocated for the hats list */
+#define HATS_INITIAL_SIZE   4
 
 /** \brief  Global DirectInput8 interface handle */
 static LPDIRECTINPUT8 dinput_handle = NULL;
@@ -145,7 +157,7 @@ static BOOL EnumObjects_axes_cb(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
                                              DIPROP_LOGICALRANGE,
                                              &range.diph);
     if (SUCCEEDED(result)) {
-        printf("range: %ld - %ld\n", range.lMin, range.lMax);
+  //      printf("range: %ld - %ld\n", range.lMin, range.lMax);
         axis->minimum = range.lMin;
         axis->maximum = range.lMax;
     }
@@ -159,9 +171,43 @@ static BOOL EnumObjects_axes_cb(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
                                              DIPROP_GRANULARITY,
                                              &granularity.diph);
     if (SUCCEEDED(result)) {
-        printf("granularity: %lu\n", granularity.dwData);
+//        printf("granularity: %lu\n", granularity.dwData);
         axis->granularity = granularity.dwData;
     }
+
+    return DIENUM_CONTINUE;
+}
+
+static BOOL EnumObjects_hats_cb(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
+{
+    hat_iter_t *iter = pvref;
+    joy_hat_t  *hat;
+    joy_axis_t *x_axis;
+    joy_axis_t *y_axis;
+
+    RESIZE_LIST_ITER(iter);
+
+    hat = &(iter->list[iter->index++]);
+    x_axis = &(hat->x);
+    y_axis = &(hat->y);
+
+    hat->name = lib_strdup(ddoi->tszName);
+    printf("Hat name = %s\n", hat->name);
+
+    /* POVs are apparently mapped as a single integer indicating degrees of
+     * view.
+     * For now let's just map the two axis with (-1,1)
+     */
+    joy_axis_init(x_axis);
+    joy_axis_init(y_axis);
+    x_axis->code    = 0;
+    x_axis->name    = lib_strdup("X axis");
+    x_axis->minimum = -1;
+    x_axis->maximum =  1;
+    y_axis->code    = 1u;
+    y_axis->name    = lib_strdup("Y axis");
+    y_axis->minimum = -1;
+    y_axis->maximum =  1;
 
     return DIENUM_CONTINUE;
 }
@@ -186,6 +232,7 @@ static BOOL EnumDevices_cb(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
     device_iter_t        *device_iter;
     button_iter_t         button_iter;
     axis_iter_t           axis_iter;
+    hat_iter_t            hat_iter;
 
     window = GetModuleHandle(NULL);
     device_iter = pvref;
@@ -247,6 +294,16 @@ static BOOL EnumDevices_cb(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
                                     (LPVOID)&axis_iter,
                                     DIDFT_ABSAXIS);
     joydev->axes = axis_iter.list;
+
+    /* scan hats (POVs) */
+    INIT_LIST_ITER(hat_iter, HATS_INITIAL_SIZE);
+    hat_iter.joydev = joydev;
+    hat_iter.didev  = didev;
+    IDirectInputDevice8_EnumObjects(didev,
+                                    EnumObjects_hats_cb,
+                                    (LPVOID)&hat_iter,
+                                    DIDFT_POV);
+    joydev->hats = hat_iter.list;
 
 
     device_iter->list[device_iter->index++] = joydev;
