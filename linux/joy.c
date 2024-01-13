@@ -327,6 +327,7 @@ static void scan_hats(joy_device_t *joydev, struct libevdev *evdev)
                 absinfo = libevdev_get_abs_info(evdev, x_code);
                 memset(x_axis, 0, sizeof *x_axis);
                 x_axis->code = x_code;
+                x_axis->name = lib_strdup(get_axis_name(x_code));
                 if (absinfo != NULL) {
                     x_axis->minimum    = absinfo->minimum;
                     x_axis->maximum    = absinfo->maximum;
@@ -342,6 +343,7 @@ static void scan_hats(joy_device_t *joydev, struct libevdev *evdev)
                 absinfo = libevdev_get_abs_info(evdev, y_code);
                 memset(y_axis, 0, sizeof *y_axis);
                 y_axis->code = y_code;
+                y_axis->name = lib_strdup(get_axis_name(y_code));
                 if (absinfo != NULL) {
                     y_axis->minimum    = absinfo->minimum;
                     y_axis->maximum    = absinfo->maximum;
