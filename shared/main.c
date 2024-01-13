@@ -55,6 +55,21 @@ static const cmdline_opt_t options[] = {
 };
 
 
+
+static void list_devices(joy_device_t **devices, int num_devices)
+{
+    for (int i = 0; i < num_devices; i++) {
+        if (opt_verbose) {
+            printf("device %d:\n", i);
+        }
+        joy_device_dump(devices[i], opt_verbose);
+        if (opt_verbose) {
+            putchar('\n');
+        }
+    }
+}
+
+
 int main(int argc, char **argv)
 {
     char          **args;
@@ -109,19 +124,12 @@ int main(int argc, char **argv)
     } else if (count > 1) {
         printf("Found %d devices.\n", count);
     } else {
-        printf("error querying devices.\n");
+        printf("%s: error querying devices.\n", cmdline_get_prg_name());
         status = EXIT_FAILURE;
+        goto cleanup;
     }
     if (opt_list_devices && count > 0){
-        for (int i = 0; i < count; i++) {
-            if (opt_verbose) {
-                printf("device %d:\n", i);
-            }
-            joy_device_dump(devices[i], opt_verbose);
-            if (opt_verbose) {
-                printf("----\n");
-            }
-        }
+        list_devices(devices, count);
     }
 
 cleanup:

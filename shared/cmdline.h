@@ -30,10 +30,12 @@ typedef struct {
     void           *target;
 } cmdline_opt_t;
 
-void cmdline_init(const char *name, const char *version);
-void cmdline_free(void);
-void cmdline_show_help(void);
-void cmdline_show_version(void);
-bool cmdline_add_options(const cmdline_opt_t *options);
-int  cmdline_parse(int argc, char **argv, char ***arglist);
+void        cmdline_init(const char *name, const char *version);
+void        cmdline_free(void);
+const char *cmdline_get_prg_name(void);
+void        cmdline_show_help(void);
+void        cmdline_show_version(void);
+bool        cmdline_add_options(const cmdline_opt_t *options);
+int         cmdline_parse(int argc, char **argv, char ***arglist);
+
 #endif

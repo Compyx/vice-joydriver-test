@@ -255,6 +255,16 @@ void cmdline_free(void)
 }
 
 
+/** \brief  Get program name set in \c cmdline_init()
+ *
+ * \return  program name
+ */
+const char *cmdline_get_prg_name(void)
+{
+    return prg_name;
+}
+
+
 bool cmdline_add_options(const cmdline_opt_t *options)
 {
     const cmdline_opt_t *opt = options;

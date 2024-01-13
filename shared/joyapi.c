@@ -87,8 +87,8 @@ void joy_device_dump(const joy_device_t *dev, bool verbose)
         printf("axes   : %"PRIu32"\n", dev->num_axes);
         printf("hats   : %"PRIu32"\n", dev->num_hats);
     } else {
-        printf("%s (%"PRIu32" %s, %"PRIu32" %s, %"PRIu32" %s)\n",
-               null_str(dev->name),
+        printf("%s: %s (%"PRIu32" %s, %"PRIu32" %s, %"PRIu32" %s)\n",
+               null_str(dev->node), null_str(dev->name),
                dev->num_buttons, dev->num_buttons == 1u ? "button" : "buttons",
                dev->num_axes, dev->num_axes == 1u ? "axis" : "axes",
                dev->num_hats, dev->num_hats == 1u ? "hat" : "hats");
