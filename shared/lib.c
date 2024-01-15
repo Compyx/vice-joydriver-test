@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "lib.h"
 
@@ -62,6 +63,14 @@ char *lib_strdup(const char *s)
 }
 
 
+/** \brief  Create heap-allocated copy of string of at most N bytes
+ * \param[in]   s   string
+ * \param[in]   n   maximum number of characters to copy of \a s
+ *
+ * \return  heap-allocated string, free with \c lib_free()
+ * \note    Unlike \c strncpy(3) this function does add a terminating \c nul
+ *          character.
+ */
 char *lib_strndup(const char *s, size_t n)
 {
     char *t;
@@ -81,4 +90,43 @@ char *lib_strndup(const char *s, size_t n)
         }
     }
     return t;
+}
+
+/** \brief  Concatenate a list of strings into a new string
+ *
+ * \param[in]   s   list of strings to join, terminate with \a NULL
+ *
+ * \return  heap-allocated new string, free with \c lib_free()
+ */
+char *util_concat(const char *s, ...)
+{
+    char       *result;
+    char       *rpos;
+    size_t      rlen;
+    const char *arg;
+    size_t      alen;
+    va_list     ap;
+
+    va_start(ap, s);
+    rlen = 0;
+    while ((arg = va_arg(ap, const char *)) != NULL) {
+        rlen += strlen(arg);
+    }
+    va_end(ap);
+
+    result = lib_malloc(rlen + 1u);
+    alen = strlen(s);
+    memcpy(result, s, alen);
+    rpos = result + alen;
+
+    va_start(ap, s);
+    while ((arg = va_arg(ap, const char *)) != NULL) {
+        alen = strlen(arg);
+        if (alen > 0) {
+            memcpy(rpos, arg, alen);
+            rpos += alen;
+        }
+    }
+    *rpos = '\0';
+    return result;
 }

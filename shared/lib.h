@@ -18,5 +18,6 @@ void  lib_free(void *ptr);
 
 char *lib_strdup(const char *s);
 char *lib_strndup(const char *s, size_t n);
+char *util_concat(const char *s, ...);
 
 #endif

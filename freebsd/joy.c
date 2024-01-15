@@ -5,8 +5,15 @@
 #include <errno.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
+//#include <dev/usb/usb.h>
+//#include <dev/usb/usbdi.h>
+//#include <dev/usb/usbdi_util.h>
+//#include <dev/usb/usbhid.h>
+/* for struct usb_device_info */
+#include <dev/usb/usb_ioctl.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "lib.h"
 #include "joyapi.h"
@@ -38,6 +45,45 @@ static char *get_full_node_path(const char *node)
     return path;
 }
 
+
+static joy_device_t *get_device_data(const char *node)
+{
+    joy_device_t *joydev;
+    int           fd;
+    struct usb_device_info di;
+    char *name;
+
+    fd = open(node, O_RDONLY|O_NONBLOCK);
+    if (fd < 0) {
+        fprintf(stderr, "%s(): failed to open %s.\n", __func__, node);
+        return NULL;
+    }
+
+    if (ioctl(fd, USB_GET_DEVICEINFO, &di) < 0) {
+        fprintf(stderr, "%s(): ioctl failed: %d: %s.\n",
+                __func__, errno, strerror(errno));
+        close(fd);
+        return NULL;
+    }
+
+    name = util_concat(di.udi_vendor, " ", di.udi_product, NULL);
+    if (*name == '\0') {
+        /* fall back to device node */
+        lib_free(name);
+        name = lib_strdup(node);
+    }
+
+    joydev          = joy_device_new();
+    joydev->node    = lib_strdup(node);
+    joydev->name    = name;
+    joydev->vendor  = di.udi_vendorNo;
+    joydev->product = di.udi_productNo;
+
+    close(fd);
+    return joydev;
+}
+
+
 int joy_get_devices(joy_device_t ***devices)
 {
     struct dirent **namelist = NULL;
@@ -68,13 +114,12 @@ int joy_get_devices(joy_device_t ***devices)
         char         *node;
 
         node         = get_full_node_path(namelist[n]->d_name);
-        joydev       = joy_device_new();
-        joydev->node = node;
-//        printf("%s(): found %s\n", __func__, node);
-
-        joylist[joylist_index++] = joydev;
-        joylist[joylist_index]   = NULL;
-
+        joydev       = get_device_data(node);
+        lib_free(node);
+        if (joydev != NULL) {
+            joylist[joylist_index++] = joydev;
+            joylist[joylist_index]   = NULL;
+        }
         free(namelist[n]);
     }
     free(namelist);

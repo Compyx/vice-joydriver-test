@@ -22,7 +22,7 @@ ifeq ($(UNAME_S),FreeBSD)
 	CC = clang
 	LD = $(CC)
 	PROG_CFLAGS += -D_XOPEN_SOURCE=700 -DUNIX_COMPILE -DFREEBSD_COMPILE
-	PROG_LDFLAGS += -lusb
+	PROG_LDFLAGS += -lusb -lusbhid
 	VPATH += :freebsd
 endif
 
