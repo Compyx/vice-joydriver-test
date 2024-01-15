@@ -1,3 +1,5 @@
+CC = gcc
+LD = $(CC)
 VPATH = shared
 PROG_CFLAGS = -O3 -g -std=c99 \
 	      -Wall -Wextra -Wcast-qual -Wshadow -Wconversion -Wsign-compare \
@@ -16,14 +18,19 @@ ifeq ($(UNAME_S),Linux)
 	VPATH += :linux
 endif
 
+ifeq ($(UNAME_S),FreeBSD)
+	CC = clang
+	LD = $(CC)
+	PROG_CFLAGS += -D_XOPEN_SOURCE=700 -DUNIX_COMPILE -DFREEBSD_COMPILE
+	PROG_LDFLAGS += -lusb
+	VPATH += :freebsd
+endif
+
 ifeq ($(UNAME_S),win32)
 	PROG_CFLAGS += -DWINDOWS_COMPILE
 	PROG_LDFLAGS += -ldinput8
 	VPATH += :win32
 endif
-
-CC = gcc
-LD = $(CC)
 
 PROG = vice-joydriver-test
 OBJS = main.o cmdline.o lib.o joy.o joyapi.o

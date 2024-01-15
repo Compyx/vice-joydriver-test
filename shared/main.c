@@ -8,7 +8,6 @@
 #include "cmdline.h"
 #include "joyapi.h"
 
-
 static bool  opt_verbose      = false;
 static bool  opt_list_devices = false;
 static bool  opt_list_axes    = false;
@@ -215,13 +214,7 @@ int main(int argc, char **argv)
         goto cleanup;
     }
 
-#if defined(LINUX_COMPILE)
-    printf("OS: Linux.\n");
-#elif defined(WINDOWS_COMPILE)
-    printf("OS: Windows.\n");
-#else
-    printf("OS: not detected.\n");
-#endif
+    printf("OS: " OSNAME "\n");
 
 #if 0
     if (result > 0) {
