@@ -350,14 +350,3 @@ int joy_get_devices(joy_device_t ***devices)
     *devices = iter.list;
     return (int)iter.index;
 }
-
-
-void joy_free_devices(joy_device_t **devices)
-{
-    if (devices != NULL) {
-        for (size_t i = 0; devices[i] != NULL; i++) {
-            joy_device_free(devices[i]);
-        }
-        lib_free(devices);
-    }
-}
