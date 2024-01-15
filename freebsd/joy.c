@@ -84,7 +84,7 @@ static joy_device_t *get_device_data(const char *node)
 }
 
 
-int joy_get_devices(joy_device_t ***devices)
+int joy_device_list_init(joy_device_t ***devices)
 {
     struct dirent **namelist = NULL;
     joy_device_t  **joylist;

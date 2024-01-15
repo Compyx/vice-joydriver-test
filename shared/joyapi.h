@@ -60,9 +60,8 @@ typedef struct joy_device_s {
 } joy_device_t;
 
 
-/* TODO: rename these two? */
-int           joy_get_devices (joy_device_t ***devices);
-void          joy_free_devices(joy_device_t  **devices);
+int           joy_device_list_init(joy_device_t ***devices);
+void          joy_device_list_free(joy_device_t  **devices);
 
 joy_device_t *joy_device_new (void);
 void          joy_device_free(joy_device_t *dev);

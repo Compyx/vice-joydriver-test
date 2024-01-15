@@ -314,7 +314,7 @@ static BOOL EnumDevices_cb(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
 }
 
 
-int joy_get_devices(joy_device_t ***devices)
+int joy_device_list_init(joy_device_t ***devices)
 {
     HRESULT       result;
     HINSTANCE     window;

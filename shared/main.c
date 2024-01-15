@@ -226,7 +226,7 @@ int main(int argc, char **argv)
 #endif
 //    printf("verbose = %s\n", opt_verbose ? "true" : "false");
 
-    count = joy_get_devices(&devices);
+    count = joy_device_list_init(&devices);
     if (count == 0) {
         printf("No devices found.\n");
     } else if (count == 1) {
@@ -264,7 +264,7 @@ int main(int argc, char **argv)
 
 cleanup:
     lib_free(opt_device_node);
-    joy_free_devices(devices);
+    joy_device_list_free(devices);
     cmdline_free();
     return status;
 }

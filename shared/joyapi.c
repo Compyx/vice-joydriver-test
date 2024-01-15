@@ -11,7 +11,7 @@
 #include "joyapi.h"
 
 
-void joy_free_devices(joy_device_t **devices)
+void joy_device_list_free(joy_device_t **devices)
 {
     if (devices != NULL) {
         for (size_t i = 0; devices[i] != NULL; i++) {

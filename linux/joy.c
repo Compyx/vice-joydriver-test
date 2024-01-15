@@ -408,12 +408,12 @@ static joy_device_t *get_device_data(const char *node)
 }
 
 
-int joy_get_devices(joy_device_t ***devices)
+int joy_device_list_init(joy_device_t ***devices)
 {
     struct dirent **namelist = NULL;
-    joy_device_t  **list;
-    size_t          size;
-    size_t          num;    /* number of joystick devices found */
+    joy_device_t  **joylist;
+    size_t          joylist_size;
+    size_t          joylist_index;
     int             sr;     /* scandir result */
 
     sr = scandir(NODE_ROOT, &namelist, node_filter, NULL);
@@ -423,9 +423,9 @@ int joy_get_devices(joy_device_t ***devices)
         return -1;
     }
 
-    size = DEVICES_INITIAL_SIZE;
-    list = lib_malloc(size * sizeof *list);
-    num  = 0;
+    joylist_size  = DEVICES_INITIAL_SIZE;
+    joylist_index = 0;
+    joylist       = lib_malloc(joylist_size * sizeof *joylist);
 
     for (int i = 0; i < sr; i++) {
         joy_device_t *dev;
@@ -434,10 +434,11 @@ int joy_get_devices(joy_device_t ***devices)
         node = node_full_path(namelist[i]->d_name);
         dev  = get_device_data(node);
         if (dev != NULL) {
-
-            if (num == size - 1u) {
-                size *= 2u;
-                list  = lib_realloc(list, size * sizeof *list);
+            /* -1 for the terminating NULL */
+            if (joylist_index == joylist_size - 1u) {
+                joylist_size *= 2u;
+                joylist       = lib_realloc(joylist,
+                                            joylist_size * sizeof *joylist);
             }
 #if 0
             printf("node   : %s\n"
@@ -453,14 +454,14 @@ int joy_get_devices(joy_device_t ***devices)
                    dev->num_buttons,
                    dev->num_axes);
 #endif
-            list[num++] = dev;
+            joylist[joylist_index++] = dev;
         }
         lib_free(node);
         free(namelist[i]);
     }
-
     free(namelist);
-    list[num] = NULL;
-    *devices = list;
-    return (int)num;
+
+    joylist[joylist_index] = NULL;
+    *devices               = joylist;
+    return (int)joylist_index;
 }
