@@ -1,5 +1,5 @@
-CC = gcc
-LD = $(CC)
+#CC = gcc
+#LD = $(CC)
 VPATH = shared
 PROG_CFLAGS = -O3 -g -std=c99 \
 	      -Wall -Wextra -Wcast-qual -Wshadow -Wconversion -Wsign-compare \
