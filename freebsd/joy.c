@@ -22,29 +22,30 @@
 #include "joyapi.h"
 
 
+#define ROOT_NODE       "/dev"
+#define ROOT_NODE_LEN   4u
+#define NODE_PREFIX     "uhid"
+#define NODE_PREFIX_LEN 4u
+
+
 static int sd_select(const struct dirent *de)
 {
     const char *name = de->d_name;
 
-    // printf("%s(): got '%s' -> ", __func__, name);
-    if (strlen(name) >= 5u && strncmp("uhid", name, 4u) == 0) {
-        // printf("OK\n");
-        return 1;
-    }
-    // printf("nope\n");
-    return 0;
+    return ((strlen(name) >= NODE_PREFIX_LEN + 1u) &&
+            (strncmp(NODE_PREFIX, name, NODE_PREFIX_LEN) == 0));
 }
 
 
 static char *get_full_node_path(const char *node)
 {
     size_t  nlen = strlen(node);
-    size_t  plen = 5u + nlen + 1u;
+    size_t  plen = ROOT_NODE_LEN + 1u + nlen + 1u;
     char   *path = lib_malloc(plen);
 
-    memcpy(path, "/dev", 4u);
-    path[4] = '/';
-    memcpy(path + 5, node, nlen + 1u);
+    memcpy(path, ROOT_NODE, ROOT_NODE_LEN);
+    path[ROOT_NODE_LEN] = '/';
+    memcpy(path + ROOT_NODE_LEN + 1, node, nlen + 1u);
     return path;
 }
 
@@ -177,7 +178,7 @@ int joy_device_list_init(joy_device_t ***devices)
         *devices = NULL;
     }
 
-    nl_count = scandir("/dev", &namelist, sd_select, NULL);
+    nl_count = scandir(ROOT_NODE, &namelist, sd_select, NULL);
     if (nl_count < 0) {
         fprintf(stderr, "%s(): scandir failed: %s.\n", __func__, strerror(errno));
     } else if (nl_count == 0) {
