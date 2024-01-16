@@ -1,3 +1,8 @@
+/** \file   joy.c
+ * \brief   BSD joystick driver
+ * \author  Bas Wassink <b.wassink@ziggo.nl>
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -208,5 +213,4 @@ int joy_device_list_init(joy_device_t ***devices)
 
     *devices = joylist;
     return (int)joylist_index;
-
 }
