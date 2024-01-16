@@ -10,18 +10,27 @@
 #include <errno.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 //#include <dev/usb/usb.h>
 //#include <dev/usb/usbdi.h>
 //#include <dev/usb/usbdi_util.h>
 //#include <dev/usb/usbhid.h>
+#include <usbhid.h>
+
+#ifdef FREEBSD_COMPILE
 /* for hid_* and HUG_* */
 #include <dev/hid/hid.h>
 /* for struct usb_device_info */
 #include <dev/usb/usb_ioctl.h>
-#include <usbhid.h>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+#endif
+
+#ifdef NETBSD_COMPILE
+#include <dev/usb/usb.h>
+#include <dev/usb/usbhid.h>
+#endif
 
 #include "lib.h"
 #include "joyapi.h"
@@ -148,8 +157,8 @@ static joy_device_t *get_device_data(const char *node)
 
     hdata = hid_start_parse(report, 1 << hid_input, 0);
     while (hid_get_item(hdata, &hitem) > 0) {
-        int page  = HID_PAGE (hitem.usage);
-        int usage = HID_USAGE(hitem.usage);
+        unsigned int page  = HID_PAGE (hitem.usage);
+        int          usage = HID_USAGE(hitem.usage);
 
         if (page == HUP_BUTTON) {
             /* usage appears to be the button number */

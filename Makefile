@@ -3,6 +3,7 @@
 VPATH = shared
 PROG_CFLAGS = -O3 -g -std=c99 \
 	      -Wall -Wextra -Wcast-qual -Wshadow -Wconversion -Wsign-compare \
+	      -Wsign-conversion \
 	      -Wformat -Wformat-security -Wmissing-prototypes -Wstrict-prototypes \
 	      -Ishared
 
@@ -16,6 +17,14 @@ ifeq ($(UNAME_S),Linux)
 	PROG_CFLAGS += `pkg-config --cflags libevdev` -D_XOPEN_SOURCE=700 -DUNIX_COMPILE -DLINUX_COMPILE
 	PROG_LDFLAGS += `pkg-config --libs libevdev`
 	VPATH += :linux
+endif
+
+ifeq ($(UNAME_S),NetBSD)
+	CC = gcc
+	LD = $(CC)
+	PROG_CFLAGS += -D_NETBSD_SOURCE -DUNIX_COMPILE -DNETBSD_COMPILE
+	PROG_LDFLAGS += -lusbhid
+	VPATH += :bsd
 endif
 
 ifeq ($(UNAME_S),FreeBSD)
