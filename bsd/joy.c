@@ -70,6 +70,12 @@ typedef struct {
     size_t        index;    /**< index in \c list */
 } button_iter_t;
 
+typedef struct {
+    joy_axis_t  *list;
+    size_t       size;
+    size_t       index;
+} axis_iter_t;
+
 /** \brief  Initialize device inputs list iterator
  *
  * \param[in]   iter    pointer to iterator
@@ -107,6 +113,53 @@ static void add_joy_button(button_iter_t *iter, int usage)
     button->name = lib_strdup(name);
 }
 
+typedef struct {
+    int         usage;
+    const char *name;
+} axis_info_t;
+
+static const axis_info_t axis_info_list[] = {
+    { HUG_X,        "X" },
+    { HUG_Y,        "Y" },
+    { HUG_Z,        "Z" },
+    { HUG_RX,       "RX" },
+    { HUG_RY,       "RY" },
+    { HUG_RZ,       "RZ" },
+    { HUG_SLIDER,   "Slider" }
+};
+
+static const char *get_axis_name(int usage)
+{
+    for (size_t i = 0; i < ARRAY_LEN(axis_info_list); i++) {
+        if (axis_info_list[i].usage == usage) {
+            return axis_info_list[i].name;
+        }
+    }
+    return NULL;
+}
+
+
+static void add_joy_axis(axis_iter_t *iter, int usage)
+{
+    joy_axis_t *axis;
+    char        buffer[64];
+    const char *name;
+
+    LIST_ITER_RESIZE(iter);
+
+    axis = &(iter->list[iter->index++]);
+    name = get_axis_name(usage);
+    axis->code = (uint16_t)usage;
+    if (name != NULL) {
+        axis->name = lib_strdup(name);
+    } else {
+        snprintf(buffer, sizeof buffer, "Axis %d", usage);
+        axis->name = lib_strdup(buffer);
+    }
+    printf("%s(): adding axis %u: %s\n",
+           __func__, (unsigned int)axis->code, axis->name);
+}
+
 
 static joy_device_t *get_device_data(const char *node)
 {
@@ -118,6 +171,7 @@ static joy_device_t *get_device_data(const char *node)
     struct hid_item         hitem;
     char                   *name;
     int                     fd;
+    axis_iter_t             axis_iter;
     button_iter_t           button_iter;
 
     fd = open(node, O_RDONLY|O_NONBLOCK);
@@ -168,24 +222,58 @@ static joy_device_t *get_device_data(const char *node)
     joydev->vendor  = devinfo.udi_vendorNo;
     joydev->product = devinfo.udi_productNo;
 
-    /* get buttons for device */
     LIST_ITER_INIT(&button_iter, 16u);
+    LIST_ITER_INIT(&axis_iter, 8u);
 
     hdata = hid_start_parse(report, 1 << hid_input, rep_id);
     while (hid_get_item(hdata, &hitem) > 0) {
         unsigned int page  = HID_PAGE (hitem.usage);
         int          usage = HID_USAGE(hitem.usage);
 
-        if (page == HUP_BUTTON) {
-            /* usage appears to be the button number */
-            printf("%s(): adding button: data: %04x, usage: %d\n",
-                   __func__, hid_get_data(hdata, &hitem), usage);
-            add_joy_button(&button_iter, usage);
+        printf("%s(): item.page = %u, item.usage = %d\n",
+                __func__, page, usage);
 
+        switch (page) {
+            case HUP_GENERIC_DESKTOP:
+                switch (usage) {
+                    case HUG_X:     /* fall through */
+                    case HUG_Y:     /* fall through */
+                    case HUG_Z:     /* fall through */
+                    case HUG_RX:    /* fall through */
+                    case HUG_RY:    /* fall through */
+                    case HUG_RZ:    /* fall through */
+                    case HUG_SLIDER:
+                        /* got an axis */
+                        add_joy_axis(&axis_iter, usage);
+                        break;
+                    case HUG_HAT_SWITCH:
+                        /* hat */
+                        printf("%s(): TODO: got HUG_HAT_SWITCH\n", __func__);
+                        break;
+                    case HUG_D_PAD_UP:      /* fall through */
+                    case HUG_D_PAD_DOWN:    /* fall through */
+                    case HUG_D_PAD_LEFT:    /* fall through */
+                    case HUG_D_PAD_RIGHT:
+                        printf("%s(): TODO: got D-Pad %u.\n", __func__, usage);
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            case HUP_BUTTON:
+                /* usage appears to be the button number */
+                printf("%s(): adding button: data: %04x, usage: %d\n",
+                       __func__, hid_get_data(hdata, &hitem), usage);
+                add_joy_button(&button_iter, usage);
+                break;
+            default:
+                break;
         }
     }
     hid_end_parse(hdata);
 
+    joydev->axes        = axis_iter.list;
+    joydev->num_axes    = (uint32_t)axis_iter.index;
     joydev->buttons     = button_iter.list;
     joydev->num_buttons = (uint32_t)button_iter.index;
 
