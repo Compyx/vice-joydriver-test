@@ -99,20 +99,20 @@ typedef struct {
         iter->list  = lib_realloc(iter->list, iter->size * sizeof *(iter->list)); \
     }
 
-static void add_joy_button(button_iter_t *iter, int usage)
+static void add_joy_button(button_iter_t *iter, const struct hid_item *item)
 {
     joy_button_t *button;
-    char          name[64];
 
     LIST_ITER_RESIZE(iter);
 
-    snprintf(name, sizeof name, "Button %d", usage);
-
     button = &(iter->list[iter->index++]);
-    button->code = (uint16_t)usage;
-    button->name = lib_strdup(name);
+    button->code = (uint16_t)HID_USAGE(item->usage);
+    button->name = lib_strdup(hid_usage_in_page(item->usage));
+    printf("%s(): adding button %u: %s\n",
+           __func__, (unsigned int)button->code, button->name);
 }
 
+#if 0
 typedef struct {
     int         usage;
     const char *name;
@@ -137,25 +137,18 @@ static const char *get_axis_name(int usage)
     }
     return NULL;
 }
+#endif
 
 
-static void add_joy_axis(axis_iter_t *iter, int usage)
+static void add_joy_axis(axis_iter_t *iter, const struct hid_item *item)
 {
     joy_axis_t *axis;
-    char        buffer[64];
-    const char *name;
 
     LIST_ITER_RESIZE(iter);
 
     axis = &(iter->list[iter->index++]);
-    name = get_axis_name(usage);
-    axis->code = (uint16_t)usage;
-    if (name != NULL) {
-        axis->name = lib_strdup(name);
-    } else {
-        snprintf(buffer, sizeof buffer, "Axis %d", usage);
-        axis->name = lib_strdup(buffer);
-    }
+    axis->code = (uint16_t)HID_USAGE(item->usage);
+    axis->name = lib_strdup(hid_usage_in_page(item->usage));
     printf("%s(): adding axis %u: %s\n",
            __func__, (unsigned int)axis->code, axis->name);
 }
@@ -230,9 +223,10 @@ static joy_device_t *get_device_data(const char *node)
         unsigned int page  = HID_PAGE (hitem.usage);
         int          usage = HID_USAGE(hitem.usage);
 
+#if 0
         printf("%s(): item.page = %u, item.usage = %d\n",
                 __func__, page, usage);
-
+#endif
         switch (page) {
             case HUP_GENERIC_DESKTOP:
                 switch (usage) {
@@ -244,7 +238,9 @@ static joy_device_t *get_device_data(const char *node)
                     case HUG_RZ:    /* fall through */
                     case HUG_SLIDER:
                         /* got an axis */
-                        add_joy_axis(&axis_iter, usage);
+                        printf("%s(): hid_usage_in_page(%u) = %s\n",
+                               __func__, usage, hid_usage_in_page(hitem.usage));
+                        add_joy_axis(&axis_iter, &hitem);
                         break;
                     case HUG_HAT_SWITCH:
                         /* hat */
@@ -254,7 +250,8 @@ static joy_device_t *get_device_data(const char *node)
                     case HUG_D_PAD_DOWN:    /* fall through */
                     case HUG_D_PAD_LEFT:    /* fall through */
                     case HUG_D_PAD_RIGHT:
-                        printf("%s(): TODO: got D-Pad %u.\n", __func__, usage);
+                        printf("%s(): TODO: got D-Pad %u: %s\n",
+                               __func__, usage, hid_usage_in_page(hitem.usage));
                         break;
                     default:
                         break;
@@ -264,7 +261,7 @@ static joy_device_t *get_device_data(const char *node)
                 /* usage appears to be the button number */
                 printf("%s(): adding button: data: %04x, usage: %d\n",
                        __func__, hid_get_data(hdata, &hitem), usage);
-                add_joy_button(&button_iter, usage);
+                add_joy_button(&button_iter, &hitem);
                 break;
             default:
                 break;
@@ -307,6 +304,9 @@ int joy_device_list_init(joy_device_t ***devices)
     joylist_index = 0;
     joylist       = lib_malloc(joylist_size * sizeof *joylist);
     joylist[0]    = NULL;
+
+    /* initialize HID library so we can retrieve strings for page and usage */
+    hid_init(NULL);
 
     for (n = 0 ; n < nl_count; n++) {
         joy_device_t *joydev;
