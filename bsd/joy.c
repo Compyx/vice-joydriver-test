@@ -113,6 +113,7 @@ static joy_device_t *get_device_data(const char *node)
     joy_device_t           *joydev;
     struct usb_device_info  devinfo;
     report_desc_t           report;
+    int                     rep_id;
     struct hid_data        *hdata;
     struct hid_item         hitem;
     char                   *name;
@@ -125,12 +126,25 @@ static joy_device_t *get_device_data(const char *node)
         return NULL;
     }
 
+    /* get device info for vendor and product */
     if (ioctl(fd, USB_GET_DEVICEINFO, &devinfo) < 0) {
-        fprintf(stderr, "%s(): ioctl failed: %d: %s.\n",
-                __func__, errno, strerror(errno));
+        fprintf(stderr, "%s(): ioctl failed: %s.\n",
+                __func__, strerror(errno));
         close(fd);
         return NULL;
     }
+
+    /* get report ID if possible, otherwise assume 0 */
+#ifdef USE_GET_REPORT_ID
+    if (ioctl(fd, USB_GET_REPORT_ID, &rep_id) < 0) {
+        fprintf(stderr, "%s(): could not get USB report id: %s.\n",
+                __func__, strerror(errno));
+        close(fd);
+        return NULL;
+    }
+#else
+    rep_id = 0;
+#endif
 
     report = hid_get_report_desc(fd);
     if (report == NULL) {
@@ -140,6 +154,7 @@ static joy_device_t *get_device_data(const char *node)
         return NULL;
     }
 
+    /* construct device name */
     name = util_concat(devinfo.udi_vendor, " ", devinfo.udi_product, NULL);
     if (*name == '\0') {
         /* fall back to device node */
@@ -153,9 +168,10 @@ static joy_device_t *get_device_data(const char *node)
     joydev->vendor  = devinfo.udi_vendorNo;
     joydev->product = devinfo.udi_productNo;
 
+    /* get buttons for device */
     LIST_ITER_INIT(&button_iter, 16u);
 
-    hdata = hid_start_parse(report, 1 << hid_input, 0);
+    hdata = hid_start_parse(report, 1 << hid_input, rep_id);
     while (hid_get_item(hdata, &hitem) > 0) {
         unsigned int page  = HID_PAGE (hitem.usage);
         int          usage = HID_USAGE(hitem.usage);
