@@ -108,7 +108,7 @@ char *util_concat(const char *s, ...)
     va_list     ap;
 
     va_start(ap, s);
-    rlen = 0;
+    rlen = strlen(s);
     while ((arg = va_arg(ap, const char *)) != NULL) {
         rlen += strlen(arg);
     }
