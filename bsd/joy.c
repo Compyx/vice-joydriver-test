@@ -30,6 +30,22 @@
 #ifdef NETBSD_COMPILE
 #include <dev/usb/usb.h>
 #include <dev/usb/usbhid.h>
+#include <dev/hid/hid.h>
+
+/* FreeBSD (9.3) doesn't have the D-Pad defines */
+#ifndef HUG_D_PAD_UP
+#define HUG_D_PAD_UP    0x0090
+#endif
+#ifndef HUG_D_PAD_DOWN
+#define HUG_D_PAD_DOWN  0x0091
+#endif
+#ifndef HUG_D_PAD_RIGHT
+#define HUG_D_PAD_RIGHT 0x0092
+#endif
+#ifndef HUG_D_PAD_LEFT
+#define HUG_D_PAD_LEFT  0x0093
+#endif
+
 #endif
 
 #include "lib.h"
