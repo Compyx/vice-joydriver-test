@@ -76,6 +76,15 @@ typedef struct joy_device_s {
                                          required */
 } joy_device_t;
 
+typedef struct joy_driver_s {
+    void (*joy_poll) (joy_device_t *);
+    void (*joy_close)(joy_device_t *);
+} joy_driver_t;
+
+
+void          joy_driver_init(void (*joy_poll) (joy_device_t *),
+                              void (*joy_close)(joy_device_t *));
+
 
 int           joy_device_list_init(joy_device_t ***devices);
 void          joy_device_list_free(joy_device_t  **devices);

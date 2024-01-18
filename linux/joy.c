@@ -34,6 +34,7 @@
 #define NODE_PREFIX             "event"
 #define NODE_PREFIX_LEN         5
 
+
 /** \brief  Hat event codes for both axes
  */
 typedef struct {
@@ -41,11 +42,16 @@ typedef struct {
     uint16_t y; /* Y axis */
 } hat_evcode_t;
 
-
 typedef struct {
     unsigned int  code;
     const char   *name;
 } ev_code_name_t;
+
+typedef struct joy_priv_s {
+    struct libevdev *evdev;
+    int              fd;
+} joy_priv_t;
+
 
 
 /* The XBox "profile" axis is a recent addition, from kernel ~6.1 onward, so we
@@ -370,6 +376,7 @@ static joy_device_t *get_device_data(const char *node)
 {
     struct libevdev *evdev;
     joy_device_t    *joydev;
+    joy_priv_t      *priv;
     int              fd;
     int              rc;
 
@@ -402,9 +409,29 @@ static joy_device_t *get_device_data(const char *node)
     scan_axes(joydev, evdev);
     scan_hats(joydev, evdev);
 
-    libevdev_free(evdev);
-    close(fd);
+    /* store driver-specific data */
+    priv = lib_malloc(sizeof *priv);
+    priv->evdev = evdev;
+    priv->fd    = fd;
+    joydev->priv = priv;
+
+    //libevdev_free(evdev);
+    //close(fd);
     return joydev;
+}
+
+
+static void priv_close(joy_device_t *joydev)
+{
+    joy_priv_t *priv = joydev->priv;
+
+    if (priv->evdev != NULL) {
+        libevdev_free(priv->evdev);
+    }
+    if (priv->fd >= 0) {
+        close(priv->fd);
+    }
+    lib_free(joydev->priv);
 }
 
 
@@ -415,6 +442,8 @@ int joy_device_list_init(joy_device_t ***devices)
     size_t          joylist_size;
     size_t          joylist_index;
     int             sr;     /* scandir result */
+
+    joy_driver_init(NULL, priv_close);
 
     sr = scandir(NODE_ROOT, &namelist, node_filter, NULL);
     if (sr < 0) {

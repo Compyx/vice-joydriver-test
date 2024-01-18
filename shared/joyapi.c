@@ -11,10 +11,24 @@
 #include "joyapi.h"
 
 
+static joy_driver_t driver;
+
+
+void joy_driver_init(void (*joy_poll) (joy_device_t *),
+                     void (*joy_close)(joy_device_t *))
+{
+    driver.joy_poll  = joy_poll;
+    driver.joy_close = joy_close;
+}
+
+
 void joy_device_list_free(joy_device_t **devices)
 {
     if (devices != NULL) {
         for (size_t i = 0; devices[i] != NULL; i++) {
+            if (driver.joy_close != NULL) {
+                driver.joy_close(devices[i]);
+            }
             joy_device_free(devices[i]);
         }
         lib_free(devices);
