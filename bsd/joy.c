@@ -92,6 +92,12 @@ typedef struct {
     size_t       index;
 } axis_iter_t;
 
+typedef struct {
+    joy_hat_t   *list;
+    size_t       size;
+    size_t       index;
+} hat_iter_t;
+
 /** \brief  Initialize device inputs list iterator
  *
  * \param[in]   iter    pointer to iterator
@@ -146,6 +152,18 @@ static void add_joy_axis(axis_iter_t *iter, const struct hid_item *item)
            axis->minimum, axis->maximum);
 }
 
+static void add_joy_hat(hat_iter_t *iter, const struct hid_item *item)
+{
+    joy_hat_t *hat;
+
+    LIST_ITER_RESIZE(iter);
+    hat = &(iter->list[iter->index++]);
+    joy_hat_init(hat);
+    hat->name = lib_strdup(hid_usage_in_page(item->usage));
+    printf("%s(): adding hat %u: %s\n",
+           __func__, HID_USAGE(item->usage), hat->name);
+}
+
 
 static joy_device_t *get_device_data(const char *node)
 {
@@ -159,6 +177,7 @@ static joy_device_t *get_device_data(const char *node)
     int                     fd;
     axis_iter_t             axis_iter;
     button_iter_t           button_iter;
+    hat_iter_t              hat_iter;
 
     fd = open(node, O_RDONLY|O_NONBLOCK);
     if (fd < 0) {
@@ -208,18 +227,15 @@ static joy_device_t *get_device_data(const char *node)
     joydev->vendor  = devinfo.udi_vendorNo;
     joydev->product = devinfo.udi_productNo;
 
-    LIST_ITER_INIT(&button_iter, 16u);
     LIST_ITER_INIT(&axis_iter, 8u);
+    LIST_ITER_INIT(&button_iter, 16u);
+    LIST_ITER_INIT(&hat_iter, 4u);
 
     hdata = hid_start_parse(report, 1 << hid_input, rep_id);
     while (hid_get_item(hdata, &hitem) > 0) {
         unsigned int page  = HID_PAGE (hitem.usage);
         int          usage = HID_USAGE(hitem.usage);
 
-#if 0
-        printf("%s(): item.page = %u, item.usage = %d\n",
-                __func__, page, usage);
-#endif
         switch (page) {
             case HUP_GENERIC_DESKTOP:
                 switch (usage) {
@@ -234,15 +250,16 @@ static joy_device_t *get_device_data(const char *node)
                         add_joy_axis(&axis_iter, &hitem);
                         break;
                     case HUG_HAT_SWITCH:
-                        /* hat */
+                        /* hat, seems to be D-Pad on Logitech F710 */
                         printf("%s(): TODO: got HUG_HAT_SWITCH\n", __func__);
+                        add_joy_hat(&hat_iter, &hitem);
                         break;
                     case HUG_D_PAD_UP:      /* fall through */
                     case HUG_D_PAD_DOWN:    /* fall through */
                     case HUG_D_PAD_LEFT:    /* fall through */
                     case HUG_D_PAD_RIGHT:
-                        printf("%s(): TODO: got D-Pad %u: %s\n",
-                               __func__, usage, hid_usage_in_page(hitem.usage));
+                        /* treat D-Pad as buttons */
+                        add_joy_button(&button_iter, &hitem);
                         break;
                     default:
                         break;
@@ -262,6 +279,8 @@ static joy_device_t *get_device_data(const char *node)
     joydev->num_axes    = (uint32_t)axis_iter.index;
     joydev->buttons     = button_iter.list;
     joydev->num_buttons = (uint32_t)button_iter.index;
+    joydev->hats        = hat_iter.list;
+    joydev->num_hats    = (uint32_t)hat_iter.index;
 
     hid_dispose_report_desc(report);
     close(fd);
