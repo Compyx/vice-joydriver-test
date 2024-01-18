@@ -122,39 +122,12 @@ static void add_joy_button(button_iter_t *iter, const struct hid_item *item)
     LIST_ITER_RESIZE(iter);
 
     button = &(iter->list[iter->index++]);
+    joy_button_init(button);
     button->code = (uint16_t)HID_USAGE(item->usage);
     button->name = lib_strdup(hid_usage_in_page(item->usage));
     printf("%s(): adding button %u: %s\n",
            __func__, (unsigned int)button->code, button->name);
 }
-
-#if 0
-typedef struct {
-    int         usage;
-    const char *name;
-} axis_info_t;
-
-static const axis_info_t axis_info_list[] = {
-    { HUG_X,        "X" },
-    { HUG_Y,        "Y" },
-    { HUG_Z,        "Z" },
-    { HUG_RX,       "RX" },
-    { HUG_RY,       "RY" },
-    { HUG_RZ,       "RZ" },
-    { HUG_SLIDER,   "Slider" }
-};
-
-static const char *get_axis_name(int usage)
-{
-    for (size_t i = 0; i < ARRAY_LEN(axis_info_list); i++) {
-        if (axis_info_list[i].usage == usage) {
-            return axis_info_list[i].name;
-        }
-    }
-    return NULL;
-}
-#endif
-
 
 static void add_joy_axis(axis_iter_t *iter, const struct hid_item *item)
 {
@@ -163,10 +136,14 @@ static void add_joy_axis(axis_iter_t *iter, const struct hid_item *item)
     LIST_ITER_RESIZE(iter);
 
     axis = &(iter->list[iter->index++]);
+    joy_axis_init(axis);
     axis->code = (uint16_t)HID_USAGE(item->usage);
     axis->name = lib_strdup(hid_usage_in_page(item->usage));
-    printf("%s(): adding axis %u: %s\n",
-           __func__, (unsigned int)axis->code, axis->name);
+    axis->minimum = item->logical_minimum;
+    axis->maximum = item->logical_maximum;
+    printf("%s(): adding axis %u: %s (%d - %d)\n",
+           __func__, (unsigned int)axis->code, axis->name,
+           axis->minimum, axis->maximum);
 }
 
 
@@ -185,14 +162,14 @@ static joy_device_t *get_device_data(const char *node)
 
     fd = open(node, O_RDONLY|O_NONBLOCK);
     if (fd < 0) {
-        fprintf(stderr, "%s(): failed to open %s.\n", __func__, node);
+        // fprintf(stderr, "%s(): failed to open %s.\n", __func__, node);
         return NULL;
     }
 
     /* get device info for vendor and product */
     if (ioctl(fd, USB_GET_DEVICEINFO, &devinfo) < 0) {
-        fprintf(stderr, "%s(): ioctl failed: %s.\n",
-                __func__, strerror(errno));
+        /* fprintf(stderr, "%s(): ioctl failed: %s.\n",
+                __func__, strerror(errno)); */
         close(fd);
         return NULL;
     }
@@ -254,8 +231,6 @@ static joy_device_t *get_device_data(const char *node)
                     case HUG_RZ:    /* fall through */
                     case HUG_SLIDER:
                         /* got an axis */
-                        printf("%s(): hid_usage_in_page(%u) = %s\n",
-                               __func__, usage, hid_usage_in_page(hitem.usage));
                         add_joy_axis(&axis_iter, &hitem);
                         break;
                     case HUG_HAT_SWITCH:
@@ -275,8 +250,6 @@ static joy_device_t *get_device_data(const char *node)
                 break;
             case HUP_BUTTON:
                 /* usage appears to be the button number */
-                printf("%s(): adding button: data: %04x, usage: %d\n",
-                       __func__, hid_get_data(hdata, &hitem), usage);
                 add_joy_button(&button_iter, &hitem);
                 break;
             default:
