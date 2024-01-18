@@ -58,6 +58,30 @@
 #define NODE_PREFIX_LEN 4u
 
 
+typedef struct joy_priv_s {
+    struct hid_item hid_item;
+    int             fd;
+} joy_priv_t;
+
+
+static joy_priv_t *joy_priv_new(void)
+{
+    joy_priv_t *priv = lib_malloc(sizeof *priv);
+    priv->fd     = -1;
+    return priv;
+}
+
+static void joy_priv_free(joy_priv_t *priv)
+{
+    if (priv != NULL) {
+        if (priv->fd >= 0) {
+            close(priv->fd);
+        }
+        lib_free(priv);
+    }
+}
+
+
 static int sd_select(const struct dirent *de)
 {
     const char *name = de->d_name;
@@ -168,6 +192,7 @@ static void add_joy_hat(hat_iter_t *iter, const struct hid_item *item)
 static joy_device_t *get_device_data(const char *node)
 {
     joy_device_t           *joydev;
+    joy_priv_t             *priv;
     struct usb_device_info  devinfo;
     report_desc_t           report;
     int                     rep_id;
@@ -274,17 +299,27 @@ static joy_device_t *get_device_data(const char *node)
         }
     }
     hid_end_parse(hdata);
-
-    joydev->axes        = axis_iter.list;
-    joydev->num_axes    = (uint32_t)axis_iter.index;
-    joydev->buttons     = button_iter.list;
-    joydev->num_buttons = (uint32_t)button_iter.index;
-    joydev->hats        = hat_iter.list;
-    joydev->num_hats    = (uint32_t)hat_iter.index;
-
     hid_dispose_report_desc(report);
-    close(fd);
+
+    joydev->axes         = axis_iter.list;
+    joydev->num_axes     = (uint32_t)axis_iter.index;
+    joydev->buttons      = button_iter.list;
+    joydev->num_buttons  = (uint32_t)button_iter.index;
+    joydev->hats         = hat_iter.list;
+    joydev->num_hats     = (uint32_t)hat_iter.index;
+
+    priv = joy_priv_new();
+    priv->hid_item = hitem;
+    priv->fd    = fd;
+    joydev->priv = priv;
+
     return joydev;
+}
+
+
+static void joy_priv_close(joy_device_t *joydev)
+{
+    joy_priv_free(joydev->priv);
 }
 
 
@@ -300,6 +335,8 @@ int joy_device_list_init(joy_device_t ***devices)
     if (devices != NULL) {
         *devices = NULL;
     }
+
+    joy_driver_init(NULL, joy_priv_close);
 
     nl_count = scandir(ROOT_NODE, &namelist, sd_select, NULL);
     if (nl_count < 0) {
