@@ -140,6 +140,10 @@ void joy_button_init(joy_button_t *button)
 void joy_hat_init(joy_hat_t *hat)
 {
     hat->name = NULL;
+    hat->code = 0;
     joy_axis_init(&(hat->x));
     joy_axis_init(&(hat->y));
+    for (size_t i = 0; i < sizeof hat->hat_map; i++) {
+        hat->hat_map[i] = JOY_HAT_NEUTRAL;
+    }
 }

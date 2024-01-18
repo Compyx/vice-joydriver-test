@@ -10,6 +10,20 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+typedef enum {
+    JOY_HAT_NEUTRAL = 0,
+    JOY_HAT_NORTH,
+    JOY_HAT_NORTHEAST,
+    JOY_HAT_EAST,
+    JOY_HAT_SOUTHEAST,
+    JOY_HAT_SOUTH,
+    JOY_HAT_SOUTHWEST,
+    JOY_HAT_WEST,
+    JOY_HAT_NORTHWEST
+} joy_hat_direction_t;
+
+#define JOY_HAT_NUM_DIRECTIONS  (JOY_HAT_NORTHWEST + 1)
+
 
 /** \brief  Joystick button object */
 typedef struct joy_button_s {
@@ -29,11 +43,16 @@ typedef struct joy_axis_s {
     uint32_t  granularity;      /**< granularity of reported values (Windows) */
 } joy_axis_t;
 
-/** \brief  Joystick hat object */
+/** \brief  Joystick hat object
+ *
+ * If \c code > 0 we use the hat map instead of the axes.
+ */
 typedef struct joy_hat_s {
-    char        *name;  /**< name */
-    joy_axis_t   x;     /**< X axis */
-    joy_axis_t   y;     /**< Y axis */
+    uint16_t             code;  /**< code in case of USB hat switch (BSD) */
+    char                *name;  /**< name */
+    joy_axis_t           x;     /**< X axis */
+    joy_axis_t           y;     /**< Y axis */
+    joy_hat_direction_t  hat_map[JOY_HAT_NUM_DIRECTIONS];   /* hat mapping */
 } joy_hat_t;
 
 /** \brief  Joystick device object */
