@@ -33,8 +33,7 @@ joy_device_t *joy_device_new(void)
 
     dev->num_buttons = 0;
     dev->num_axes    = 0;
-    dev->num_hats  = 0;
-    dev->num_balls   = 0;
+    dev->num_hats    = 0;
 
     dev->buttons     = NULL;
     dev->axes        = NULL;

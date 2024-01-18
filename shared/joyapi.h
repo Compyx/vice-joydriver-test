@@ -66,8 +66,6 @@ typedef struct joy_device_s {
     uint32_t      num_buttons;      /**< number of buttons */
     uint32_t      num_axes;         /**< number of axes */
     uint32_t      num_hats;         /**< number of hats */
-    uint32_t      num_balls;        /**< UNUSED, no API mentions anything about
-                                         "balls" */
 
     joy_button_t *buttons;          /**< list of buttons */
     joy_axis_t   *axes;             /**< list of axes */
