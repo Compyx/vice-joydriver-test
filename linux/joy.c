@@ -167,12 +167,6 @@ static const hat_evcode_t hat_event_codes[] = {
 };
 
 
-static const joy_driver_t driver = {
-    .joydev_open  = joydev_open,
-    .joydev_poll  = joydev_poll,
-    .joydev_close = joydev_close,
-};
-
 
 static const char *get_event_code_name(const ev_code_name_t *list,
                                        size_t                length,
@@ -425,17 +419,20 @@ static joy_device_t *get_device_data(const char *node)
 }
 
 
-
-
-
 int joy_device_list_init(joy_device_t ***devices)
 {
+    joy_driver_t    driver;
     struct dirent **namelist = NULL;
     joy_device_t  **joylist;
     size_t          joylist_size;
     size_t          joylist_index;
     int             sr;     /* scandir result */
 
+    driver = (joy_driver_t) {
+        .open  = joydev_open,
+        .close = joydev_close,
+        .poll  = joydev_poll
+    };
     joy_driver_register(&driver);
 
     sr = scandir(NODE_ROOT, &namelist, node_filter, NULL);
