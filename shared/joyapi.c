@@ -11,9 +11,17 @@
 #include "joyapi.h"
 
 
+/** \brief  Arch-specific callbacks for the joystick system
+ *
+ * Must be set by the arch-specific code by calling \c joy_driver_register().
+ */
 static joy_driver_t driver;
 
 
+/** \brief  Register arch-specific callbacks for the joystick system
+ *
+ * \param[in]   drv joystick driver object
+ */
 void joy_driver_register(const joy_driver_t *drv)
 {
     driver.open  = drv->open;
@@ -22,13 +30,14 @@ void joy_driver_register(const joy_driver_t *drv)
 }
 
 
+/** \brief  Free device list and all its associated resources
+ *
+ * \param[in]   devices joystick device list
+ */
 void joy_device_list_free(joy_device_t **devices)
 {
     if (devices != NULL) {
         for (size_t i = 0; devices[i] != NULL; i++) {
-            if (driver.close != NULL) {
-                driver.close(devices[i]);
-            }
             joy_device_free(devices[i]);
         }
         lib_free(devices);
@@ -36,6 +45,12 @@ void joy_device_list_free(joy_device_t **devices)
 }
 
 
+/** \brief  Allocate and initialize new joystick device object
+ *
+ * All members are initialized to \c 0 or \c NULL.
+ *
+ * \return  new joystick device object
+ */
 joy_device_t *joy_device_new(void)
 {
     joy_device_t *dev = lib_malloc(sizeof *dev);
@@ -59,37 +74,50 @@ joy_device_t *joy_device_new(void)
 }
 
 
-void joy_device_free(joy_device_t *dev)
+/** \brief  Free all resources associated with joystick device
+ *
+ * Also calls the joystick driver's \c close() function to close and cleanup
+ * any arch-specific resources. The call to \c close() happens before freeing
+ * any other data so that callback can still access any data it might need.
+ *
+ * \param[in]   joydev  joystick device
+ */
+void joy_device_free(joy_device_t *joydev)
 {
     uint32_t i;
 
-    lib_free(dev->name);
-    lib_free(dev->node);
-
-    if (dev->axes != NULL) {
-        for (i = 0; i < dev->num_axes; i++) {
-            lib_free(dev->axes[i].name);
-        }
-        lib_free(dev->axes);
+    /* properly close device */
+    if (driver.close != NULL) {
+        driver.close(joydev);
     }
 
-    if (dev->buttons != NULL) {
-        for (i = 0; i < dev->num_buttons; i++) {
-            lib_free(dev->buttons[i].name);
+    lib_free(joydev->name);
+    lib_free(joydev->node);
+
+    if (joydev->axes != NULL) {
+        for (i = 0; i < joydev->num_axes; i++) {
+            lib_free(joydev->axes[i].name);
         }
-        lib_free(dev->buttons);
+        lib_free(joydev->axes);
     }
 
-    if (dev->hats != NULL) {
-        for (i = 0; i < dev->num_hats; i++) {
-            lib_free(dev->hats[i].x.name);
-            lib_free(dev->hats[i].y.name);
-            lib_free(dev->hats[i].name);
+    if (joydev->buttons != NULL) {
+        for (i = 0; i < joydev->num_buttons; i++) {
+            lib_free(joydev->buttons[i].name);
         }
-        lib_free(dev->hats);
+        lib_free(joydev->buttons);
     }
 
-    lib_free(dev);
+    if (joydev->hats != NULL) {
+        for (i = 0; i < joydev->num_hats; i++) {
+            lib_free(joydev->hats[i].x.name);
+            lib_free(joydev->hats[i].y.name);
+            lib_free(joydev->hats[i].name);
+        }
+        lib_free(joydev->hats);
+    }
+
+    lib_free(joydev);
 }
 
 
@@ -97,32 +125,39 @@ void joy_device_free(joy_device_t *dev)
 
 /** \brief  Print information on joystick device on stdout
  *
- * \param[in]   dev     joystick device
+ * \param[in]   joydev  joystick device
  * \param[in]   verbose be verbose
  */
-void joy_device_dump(const joy_device_t *dev, bool verbose)
+void joy_device_dump(const joy_device_t *joydev, bool verbose)
 {
     if (verbose) {
-        printf("name   : %s\n", null_str(dev->name));
-        printf("node   : %s\n", null_str(dev->node));
-        printf("vendor : %04"PRIx16"\n", dev->vendor);
-        printf("product: %04"PRIx16"\n", dev->product);
-        printf("buttons: %"PRIu32"\n", dev->num_buttons);
-        printf("axes   : %"PRIu32"\n", dev->num_axes);
-        printf("hats   : %"PRIu32"\n", dev->num_hats);
+        printf("name   : %s\n",          null_str(joydev->name));
+        printf("node   : %s\n",          null_str(joydev->node));
+        printf("vendor : %04"PRIx16"\n", joydev->vendor);
+        printf("product: %04"PRIx16"\n", joydev->product);
+        printf("buttons: %"PRIu32"\n",   joydev->num_buttons);
+        printf("axes   : %"PRIu32"\n",   joydev->num_axes);
+        printf("hats   : %"PRIu32"\n",   joydev->num_hats);
     } else {
         printf("%s: %s (%"PRIu32" %s, %"PRIu32" %s, %"PRIu32" %s)\n",
-               null_str(dev->node), null_str(dev->name),
-               dev->num_buttons, dev->num_buttons == 1u ? "button" : "buttons",
-               dev->num_axes, dev->num_axes == 1u ? "axis" : "axes",
-               dev->num_hats, dev->num_hats == 1u ? "hat" : "hats");
+               null_str(joydev->node), null_str(joydev->name),
+               joydev->num_buttons, joydev->num_buttons == 1u ? "button" : "buttons",
+               joydev->num_axes, joydev->num_axes == 1u ? "axis" : "axes",
+               joydev->num_hats, joydev->num_hats == 1u ? "hat" : "hats");
     }
 }
 
 
+/** \brief  Get joystick device from list by its node
+ *
+ * \param[in]   devices joystick device list
+ * \param[in]   node    device node on the OS (or GUID on Windows)
+ *
+ * \return  device or \c NULL when not found
+ */
 joy_device_t *joy_device_get(joy_device_t **devices, const char *node)
 {
-    if (devices != NULL && node != NULL) {
+    if (devices != NULL && node != NULL && *node != '\0') {
         for (size_t i = 0; devices[i] != NULL; i++) {
             if (strcmp(devices[i]->node, node) == 0) {
                 return devices[i];
@@ -132,10 +167,15 @@ joy_device_t *joy_device_get(joy_device_t **devices, const char *node)
     return NULL;
 }
 
+
+/** \brief  Initialize joystick axis object to default values
+ *
+ * \param[in]   axis    joystick axis object
+ */
 void joy_axis_init(joy_axis_t *axis)
 {
-    axis->code       = 0;
-    axis->name       = NULL;
+    axis->code        = 0;
+    axis->name        = NULL;
     axis->minimum     = INT16_MIN;
     axis->maximum     = INT16_MAX;
     axis->fuzz        = 0;
@@ -144,12 +184,22 @@ void joy_axis_init(joy_axis_t *axis)
     axis->granularity = 1;
 }
 
+
+/** \brief  Initialize joystick button object to default values
+ *
+ * \param[in]   button  joystick button object
+ */
 void joy_button_init(joy_button_t *button)
 {
     button->code = 0;
     button->name = NULL;
 }
 
+
+/** \brief  Initialize joystick hat object to default values
+ *
+ * \param[in]   hat     joystick hat object
+ */
 void joy_hat_init(joy_hat_t *hat)
 {
     hat->name = NULL;

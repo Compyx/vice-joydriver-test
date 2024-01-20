@@ -85,17 +85,24 @@ typedef struct joy_driver_s {
 } joy_driver_t;
 
 
-bool          joy_init(void);
+/*
+ * Prototypes mark 'arch' are expected to be implemented for the arch using
+ * arch-specific code.
+ * TODO:    Perhaps affix these with _arch_ like the hotkeys API does to make
+ *          it clear which functions are expected to be implemented for an
+ *          arch and which are provided by VICE independent of arch.
+ */
+
+bool          joy_init(void);   /* arch */
 
 void          joy_driver_register(const joy_driver_t *drv);
+int           joy_device_list_init(joy_device_t ***devices);    /* arch */
 
-int           joy_device_list_init(joy_device_t ***devices);
 void          joy_device_list_free(joy_device_t  **devices);
 
 joy_device_t *joy_device_new (void);
 void          joy_device_free(joy_device_t *dev);
 void          joy_device_dump(const joy_device_t *dev, bool verbose);
-
 joy_device_t *joy_device_get(joy_device_t **devices, const char *node);
 
 const char   *joy_device_get_button_name(const joy_device_t *dev, uint16_t code);
