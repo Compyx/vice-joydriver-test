@@ -53,6 +53,12 @@ typedef struct joy_priv_s {
 } joy_priv_t;
 
 
+/* Forward declarations */
+static bool joydev_open (joy_device_t *joydev);
+static void joydev_close(joy_device_t *joydev);
+static void joydev_poll (joy_device_t *joydev);
+
+
 
 /* The XBox "profile" axis is a recent addition, from kernel ~6.1 onward, so we
  * define it ourselves here.
@@ -158,6 +164,13 @@ static const hat_evcode_t hat_event_codes[] = {
     { ABS_HAT1X, ABS_HAT1Y },
     { ABS_HAT2X, ABS_HAT2Y },
     { ABS_HAT3X, ABS_HAT3Y }
+};
+
+
+static const joy_driver_t driver = {
+    .joydev_open  = joydev_open,
+    .joydev_poll  = joydev_poll,
+    .joydev_close = joydev_close,
 };
 
 
@@ -376,7 +389,6 @@ static joy_device_t *get_device_data(const char *node)
 {
     struct libevdev *evdev;
     joy_device_t    *joydev;
-    joy_priv_t      *priv;
     int              fd;
     int              rc;
 
@@ -409,30 +421,11 @@ static joy_device_t *get_device_data(const char *node)
     scan_axes(joydev, evdev);
     scan_hats(joydev, evdev);
 
-    /* store driver-specific data */
-    priv = lib_malloc(sizeof *priv);
-    priv->evdev = evdev;
-    priv->fd    = fd;
-    joydev->priv = priv;
-
-    //libevdev_free(evdev);
-    //close(fd);
     return joydev;
 }
 
 
-static void priv_close(joy_device_t *joydev)
-{
-    joy_priv_t *priv = joydev->priv;
 
-    if (priv->evdev != NULL) {
-        libevdev_free(priv->evdev);
-    }
-    if (priv->fd >= 0) {
-        close(priv->fd);
-    }
-    lib_free(joydev->priv);
-}
 
 
 int joy_device_list_init(joy_device_t ***devices)
@@ -443,7 +436,7 @@ int joy_device_list_init(joy_device_t ***devices)
     size_t          joylist_index;
     int             sr;     /* scandir result */
 
-    joy_driver_init(NULL, priv_close);
+    joy_driver_register(&driver);
 
     sr = scandir(NODE_ROOT, &namelist, node_filter, NULL);
     if (sr < 0) {
@@ -493,4 +486,95 @@ int joy_device_list_init(joy_device_t ***devices)
     joylist[joylist_index] = NULL;
     *devices               = joylist;
     return (int)joylist_index;
+}
+
+
+
+static joy_priv_t *joy_priv_new(void)
+{
+    joy_priv_t *priv = lib_malloc(sizeof *priv);
+
+    priv->evdev = NULL;
+    priv->fd    = -1;
+    return priv;
+}
+
+static void joy_priv_free(joy_priv_t *priv)
+{
+    if (priv->evdev) {
+        libevdev_free(priv->evdev);
+    }
+    if (priv->fd >= 0) {
+        close(priv->fd);
+    }
+    lib_free(priv);
+}
+
+/** \brief  Driver \c open method
+ *
+ * Open the joystick device for polling.
+ *
+ * Associate a file descriptor and libevdev instance with the device through
+ * its device node.
+ *
+ * \param[in]   joydev  joystick device
+ *
+ * \return  \c true on success
+ */
+static bool joydev_open(joy_device_t *joydev)
+{
+    joy_priv_t      *priv;
+    struct libevdev *evdev;
+    int              fd;
+    int              rc;
+
+    if (joydev->priv != NULL) {
+        joy_priv_free(joydev->priv);
+        joydev->priv = NULL;
+    }
+
+    fd = open(joydev->name, O_RDONLY|O_NONBLOCK);
+    if (fd < 0) {
+        fprintf(stderr, "failed to open %s: %s\n", joydev->node, strerror(errno));
+        return false;
+    }
+
+    rc = libevdev_new_from_fd(fd, &evdev);
+    if (rc < 0) {
+        fprintf(stderr, "failed to init libevdev: %s\n", strerror(-rc));
+        close(fd);
+        return false;
+    }
+
+    priv         = joy_priv_new();
+    priv->evdev  = evdev;
+    priv->fd     = fd;
+    joydev->priv = priv;
+    return true;
+}
+
+/** \brief  Driver \c close method
+ *
+ * Close the device.
+ *
+ * Close the file descriptor and free the libdevdev instance.
+ *
+ * \param[in]   joydev  joystick device
+ */
+static void joydev_close(joy_device_t *joydev)
+{
+    joy_priv_t *priv = joydev->priv;
+
+    if (priv != NULL) {
+        joy_priv_free(priv);
+        joydev->priv = NULL;
+    }
+}
+
+static void joydev_poll(joy_device_t *joydev)
+{
+    if (joydev->priv == NULL) {
+        /* nothing to poll */
+        return;
+    }
 }

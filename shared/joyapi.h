@@ -76,15 +76,16 @@ typedef struct joy_device_s {
                                          required */
 } joy_device_t;
 
+/** \brief  Joystick driver registration object
+ */
 typedef struct joy_driver_s {
-    void (*joy_poll) (joy_device_t *);
-    void (*joy_close)(joy_device_t *);
+    bool (*joydev_open) (joy_device_t *joydev); /**< open device for polling */
+    void (*joydev_poll) (joy_device_t *joydev); /**< poll device */
+    void (*joydev_close)(joy_device_t *joydev); /**< close device */
 } joy_driver_t;
 
 
-void          joy_driver_init(void (*joy_poll) (joy_device_t *),
-                              void (*joy_close)(joy_device_t *));
-
+void          joy_driver_register(const joy_driver_t *drv);
 
 int           joy_device_list_init(joy_device_t ***devices);
 void          joy_device_list_free(joy_device_t  **devices);
