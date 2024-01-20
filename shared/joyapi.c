@@ -16,9 +16,9 @@ static joy_driver_t driver;
 
 void joy_driver_register(const joy_driver_t *drv)
 {
-    driver.joydev_open  = drv->joydev_open;
-    driver.joydev_poll  = drv->joydev_poll;
-    driver.joydev_close = drv->joydev_close;
+    driver.open  = drv->open;
+    driver.close = drv->close;
+    driver.poll  = drv->poll;
 }
 
 
@@ -26,8 +26,8 @@ void joy_device_list_free(joy_device_t **devices)
 {
     if (devices != NULL) {
         for (size_t i = 0; devices[i] != NULL; i++) {
-            if (driver.joydev_close != NULL) {
-                driver.joydev_close(devices[i]);
+            if (driver.close != NULL) {
+                driver.close(devices[i]);
             }
             joy_device_free(devices[i]);
         }

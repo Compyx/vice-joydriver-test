@@ -79,9 +79,9 @@ typedef struct joy_device_s {
 /** \brief  Joystick driver registration object
  */
 typedef struct joy_driver_s {
-    bool (*joydev_open) (joy_device_t *joydev); /**< open device for polling */
-    void (*joydev_poll) (joy_device_t *joydev); /**< poll device */
-    void (*joydev_close)(joy_device_t *joydev); /**< close device */
+    bool (*open) (joy_device_t *joydev); /**< open device for polling */
+    void (*poll) (joy_device_t *joydev); /**< poll device */
+    void (*close)(joy_device_t *joydev); /**< close device */
 } joy_driver_t;
 
 

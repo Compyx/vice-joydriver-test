@@ -58,8 +58,12 @@
 #define NODE_PREFIX_LEN 4u
 
 
+static bool joydev_open (joy_device_t *joydev);
+static void joydev_close(joy_device_t *joydev);
+static void joydev_poll (joy_device_t *joydev);
+
+
 typedef struct joy_priv_s {
-    struct hid_item hid_item;
     int             fd;
 } joy_priv_t;
 
@@ -67,7 +71,7 @@ typedef struct joy_priv_s {
 static joy_priv_t *joy_priv_new(void)
 {
     joy_priv_t *priv = lib_malloc(sizeof *priv);
-    priv->fd     = -1;
+    priv->fd = -1;
     return priv;
 }
 
@@ -192,7 +196,6 @@ static void add_joy_hat(hat_iter_t *iter, const struct hid_item *item)
 static joy_device_t *get_device_data(const char *node)
 {
     joy_device_t           *joydev;
-    joy_priv_t             *priv;
     struct usb_device_info  devinfo;
     report_desc_t           report;
     int                     rep_id;
@@ -308,25 +311,16 @@ static joy_device_t *get_device_data(const char *node)
     joydev->hats         = hat_iter.list;
     joydev->num_hats     = (uint32_t)hat_iter.index;
 
-    priv = joy_priv_new();
-    priv->hid_item = hitem;
-    priv->fd    = fd;
-    joydev->priv = priv;
-
+    close(fd);
     return joydev;
-}
-
-
-static void joy_priv_close(joy_device_t *joydev)
-{
-    joy_priv_free(joydev->priv);
 }
 
 
 int joy_device_list_init(joy_device_t ***devices)
 {
-    struct dirent **namelist = NULL;
+    joy_driver_t    driver;
     joy_device_t  **joylist;
+    struct dirent **namelist = NULL;
     int             nl_count = 0;
     int             n;
     size_t          joylist_size;
@@ -336,7 +330,13 @@ int joy_device_list_init(joy_device_t ***devices)
         *devices = NULL;
     }
 
-    joy_driver_init(NULL, joy_priv_close);
+    driver = (joy_driver_t){
+        .open  = joydev_open,
+        .close = joydev_close,
+        .poll  = joydev_poll
+    };
+
+    joy_driver_register(&driver);
 
     nl_count = scandir(ROOT_NODE, &namelist, sd_select, NULL);
     if (nl_count < 0) {
@@ -371,4 +371,44 @@ int joy_device_list_init(joy_device_t ***devices)
 
     *devices = joylist;
     return (int)joylist_index;
+}
+
+
+static bool joydev_open(joy_device_t *joydev)
+{
+    joy_priv_t *priv;
+    int         fd;
+    struct      hid_item;
+
+    if (joydev->priv != NULL) {
+        joy_priv_free(joydev->priv);
+        joydev->priv = NULL;
+    }
+
+    fd = open(joydev->node, O_RDONLY|O_NONBLOCK);
+    if (fd < 0) {
+        fprintf(stderr, "failed to open %s: %s.\n", joydev->node, strerror(errno));
+        return false;
+    }
+
+    priv         = joy_priv_new();
+    priv->fd     = fd;
+    joydev->priv = priv;
+    return true;
+}
+
+static void joydev_close(joy_device_t *joydev)
+{
+    if (joydev->priv != NULL) {
+        joy_priv_free(joydev->priv);
+        joydev->priv = NULL;
+    }
+}
+
+static void joydev_poll(joy_device_t *joydev)
+{
+    if (joydev->priv == NULL) {
+        /* no file descriptor */
+        return;
+    }
 }
