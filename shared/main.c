@@ -216,16 +216,10 @@ int main(int argc, char **argv)
 
     printf("OS: " OSNAME "\n");
 
-#if 0
-    if (result > 0) {
-        printf("non-option arguments:\n");
-        for (int i = 0; i < result; i++) {
-            printf("%d: %s\n", i, args[i]);
-        }
-    }
-#endif
-//    printf("verbose = %s\n", opt_verbose ? "true" : "false");
+    /* initialize arch-specific joy system */
+    joy_init();
 
+    /* enumerate connected devices */
     count = joy_device_list_init(&devices);
     if (count == 0) {
         printf("No devices found.\n");

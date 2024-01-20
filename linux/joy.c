@@ -421,19 +421,11 @@ static joy_device_t *get_device_data(const char *node)
 
 int joy_device_list_init(joy_device_t ***devices)
 {
-    joy_driver_t    driver;
     struct dirent **namelist = NULL;
     joy_device_t  **joylist;
     size_t          joylist_size;
     size_t          joylist_index;
     int             sr;     /* scandir result */
-
-    driver = (joy_driver_t) {
-        .open  = joydev_open,
-        .close = joydev_close,
-        .poll  = joydev_poll
-    };
-    joy_driver_register(&driver);
 
     sr = scandir(NODE_ROOT, &namelist, node_filter, NULL);
     if (sr < 0) {
@@ -574,4 +566,17 @@ static void joydev_poll(joy_device_t *joydev)
         /* nothing to poll */
         return;
     }
+}
+
+
+bool joy_init(void)
+{
+    joy_driver_t driver = {
+        .open  = joydev_open,
+        .close = joydev_close,
+        .poll  = joydev_poll
+    };
+
+    joy_driver_register(&driver);
+    return true;
 }

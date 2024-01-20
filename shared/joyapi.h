@@ -85,6 +85,8 @@ typedef struct joy_driver_s {
 } joy_driver_t;
 
 
+bool          joy_init(void);
+
 void          joy_driver_register(const joy_driver_t *drv);
 
 int           joy_device_list_init(joy_device_t ***devices);
