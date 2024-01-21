@@ -105,12 +105,17 @@ void          joy_device_free(joy_device_t *dev);
 void          joy_device_dump(const joy_device_t *dev, bool verbose);
 joy_device_t *joy_device_get(joy_device_t **devices, const char *node);
 
-const char   *joy_device_get_button_name(const joy_device_t *dev, uint16_t code);
-const char   *joy_device_get_axis_name  (const joy_device_t *dev, uint16_t code);
-const char   *joy_device_get_hat_name   (const joy_device_t *dev, uint16_t code);
+const char   *joy_device_get_button_name(const joy_device_t *joydev, uint16_t code);
+const char   *joy_device_get_axis_name  (const joy_device_t *joydev, uint16_t code);
+const char   *joy_device_get_hat_name   (const joy_device_t *joydev, uint16_t code);
 
 void          joy_axis_init  (joy_axis_t   *axis);
 void          joy_button_init(joy_button_t *button);
 void          joy_hat_init   (joy_hat_t    *hat);
+
+
+void          joy_axis_event  (const joy_device_t *joydev, uint16_t code, int32_t value);
+void          joy_button_event(const joy_device_t *joydev, uint16_t code, int32_t value);
+void          joy_hat_event   (const joy_device_t *joydev, uint16_t code, int32_t value);
 
 #endif

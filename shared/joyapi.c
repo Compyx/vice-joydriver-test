@@ -168,6 +168,47 @@ joy_device_t *joy_device_get(joy_device_t **devices, const char *node)
 }
 
 
+const char *joy_device_get_axis_name(const joy_device_t *joydev, uint16_t axis)
+{
+    if (joydev != NULL) {
+        for (size_t i = 0; i < joydev->num_axes; i++) {
+            if (joydev->axes[i].code == axis) {
+                return joydev->axes[i].name;
+            }
+        }
+    }
+    return NULL;
+}
+
+
+const char *joy_device_get_button_name(const joy_device_t *joydev, uint16_t button)
+{
+    if (joydev != NULL) {
+        for (size_t i = 0; i < joydev->num_buttons; i++) {
+            if (joydev->buttons[i].code == button) {
+                return joydev->buttons[i].name;
+            }
+        }
+    }
+    return NULL;
+}
+
+
+const char *joy_device_get_hat_name(const joy_device_t *joydev, uint16_t hat)
+{
+    if (joydev != NULL) {
+        for (size_t i = 0; i < joydev->num_hats; i++) {
+            if (joydev->hats[i].code == hat) {
+                return joydev->hats[i].name;
+            }
+        }
+    }
+    return NULL;
+}
+
+
+
+
 /** \brief  Initialize joystick axis object to default values
  *
  * \param[in]   axis    joystick axis object
@@ -209,4 +250,27 @@ void joy_hat_init(joy_hat_t *hat)
     for (size_t i = 0; i < sizeof hat->hat_map; i++) {
         hat->hat_map[i] = JOY_HAT_NEUTRAL;
     }
+}
+
+
+
+void joy_axis_event(const joy_device_t *joydev, uint16_t axis, int32_t value)
+{
+    printf("axis event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
+           joydev->name, joy_device_get_axis_name(joydev, axis), axis, value);
+}
+
+
+void joy_button_event(const joy_device_t *joydev, uint16_t button, int32_t value)
+{
+    printf("button event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
+           joydev->name, joy_device_get_button_name(joydev, button), button, value);
+
+}
+
+
+void joy_hat_event(const joy_device_t *joydev, uint16_t hat, int32_t value)
+{
+    printf("hat event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
+           joydev->name, joy_device_get_hat_name(joydev, hat), hat, value);
 }
