@@ -54,8 +54,8 @@ typedef struct joy_priv_s {
 
 
 /* Forward declarations */
-static bool joydev_open (joy_device_t *joydev);
-static void joydev_close(joy_device_t *joydev);
+//static bool joydev_open (joy_device_t *joydev);
+//static void joydev_close(joy_device_t *joydev);
 static bool joydev_poll (joy_device_t *joydev);
 
 
@@ -67,6 +67,28 @@ static bool joydev_poll (joy_device_t *joydev);
 #ifndef ABS_PROFILE
 #define ABS_PROFILE 0x21
 #endif
+
+/** \brief  Test if an event code is an axis event code
+ *
+ * \param[in]   code    event code
+ * \return  \c true if axis
+ */
+#define IS_AXIS(code) (((code) >= ABS_X && (code) < ABS_HAT0X) || ((code) >= ABS_PRESSURE && (code) <= ABS_MISC))
+
+/** \brief  Test if an event code is a button event code
+ *
+ * \param[in]   code    event code
+ * \return  \c true if button
+ */
+#define IS_BUTTON(code) ((code) >= BTN_JOYSTICK && (code) <= BTN_THUMBR)
+
+/** \brief  Test if an event code is a hat axis code
+ *
+ * \param[in]   code    event code
+ * \return  \c true if hat
+ */
+#define IS_HAT(code) ((code) >= ABS_HAT0X) && ((code) <= ABS_HAT3Y)
+
 
 /** \brief  Button names */
 static const ev_code_name_t button_names[] = {
@@ -255,12 +277,6 @@ static void scan_buttons(joy_device_t *joydev, struct libevdev *evdev)
     joydev->num_buttons = num;
 }
 
-/** \brief  Test if an event code is a hat axis code
- *
- * \param[in]   code    event code
- * \return  \c true if \a code is a hat event
- */
-#define IS_HAT(code) ((code) >= ABS_HAT0X && (code) <= ABS_HAT3Y)
 
 
 static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
@@ -460,10 +476,10 @@ int joy_device_list_init(joy_device_t ***devices)
                    "product: %04"PRIx16"\n"
                    "buttons: %"PRIu32"\n"
                    "axes   : %"PRIu32"\n",
-                   dev->node,
+                dev->node,
                    dev->name,
                    dev->vendor,
-                   dev->product,
+                dev->product,
                    dev->num_buttons,
                    dev->num_axes);
 #endif
@@ -524,7 +540,7 @@ static bool joydev_open(joy_device_t *joydev)
         joydev->priv = NULL;
     }
 
-    fd = open(joydev->name, O_RDONLY|O_NONBLOCK);
+    fd = open(joydev->node, O_RDONLY|O_NONBLOCK);
     if (fd < 0) {
         fprintf(stderr, "failed to open %s: %s\n", joydev->node, strerror(errno));
         return false;
@@ -562,12 +578,71 @@ static void joydev_close(joy_device_t *joydev)
     }
 }
 
+
+static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
+{
+    if (event->type == EV_SYN) {
+        printf("event: time %ld.%06ld: %s\n",
+               event->input_event_sec,
+               event->input_event_usec,
+               libevdev_event_type_get_name(event->type));
+    } else {
+        printf("event: time %ld.%06ld, type %d (%s), code %04x (%s), value %d\n",
+               event->input_event_sec,
+               event->input_event_usec,
+               event->type,
+               libevdev_event_type_get_name(event->type),
+               (unsigned int)event->code,
+               libevdev_event_code_get_name(event->type, event->code),
+               event->value);
+
+        if (IS_BUTTON(event->code)) {
+            joy_button_event(joydev, (uint16_t)event->code, event->value);
+        } else if (IS_AXIS(event->code)) {
+            joy_axis_event  (joydev, (uint16_t)event->code, event->value);
+        } else if (IS_HAT(event->code)) {
+            joy_hat_event   (joydev, (uint16_t)event->code, event->value);
+        }
+    }
+}
+
+
 static bool joydev_poll(joy_device_t *joydev)
 {
-    if (joydev == NULL) {
+    joy_priv_t         *priv;
+    struct libevdev    *evdev;
+    struct input_event  event;
+    unsigned int        flags = LIBEVDEV_READ_FLAG_NORMAL;
+    int                 fd;
+    int                 rc;
+
+    if (joydev == NULL || joydev->priv == NULL) {
         /* nothing to poll */
         return false;
     }
+
+    priv  = joydev->priv;
+    evdev = priv->evdev;
+    fd    = priv->fd;
+    if (evdev == NULL || fd < 0) {
+        printf("evdev or fd invalid\n");
+        return false;
+    }
+
+    while (libevdev_has_event_pending(evdev)) {
+        rc = libevdev_next_event(evdev, flags, &event);
+        if (rc == LIBEVDEV_READ_STATUS_SYNC) {
+            printf("=== dropped ===\n");
+            while (rc == LIBEVDEV_READ_STATUS_SYNC) {
+                printf("sync");
+                rc = libevdev_next_event(evdev, LIBEVDEV_READ_FLAG_SYNC, &event);
+            }
+            printf("=== resynced ===\n");
+        } else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
+            poll_dispatch_event(joydev, &event);
+        }
+    }
+
     return true;
 }
 

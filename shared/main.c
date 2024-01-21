@@ -14,6 +14,7 @@
 #include "cmdline.h"
 #include "joyapi.h"
 
+
 static bool  opt_verbose       = false;
 static bool  opt_list_devices  = false;
 static bool  opt_list_axes     = false;
@@ -238,6 +239,7 @@ static int poll_loop(void)
 #ifndef WINDOWS_COMPILE
     struct sigaction action = { 0 };
 #endif
+    int status = EXIT_SUCCESS;
 
     if (opt_device_node == NULL) {
         fprintf(stderr, "%s: --poll requires --device-node to be used.\n",
@@ -247,6 +249,11 @@ static int poll_loop(void)
 
     joydev = get_device();
     if (joydev == NULL) {
+        return EXIT_FAILURE;
+    }
+
+    if (!joy_open(joydev)) {
+        fprintf(stderr, "%s(): failed to open device.\n", __func__);
         return EXIT_FAILURE;
     }
 
@@ -264,17 +271,22 @@ static int poll_loop(void)
 
     while (true) {
         if (!joy_poll(joydev)) {
-            return EXIT_FAILURE;
+            status = EXIT_FAILURE;
+            goto poll_exit;
         }
         if (stop_polling) {
             printf("Caught SIGINT, stopping polling\n");
-            return EXIT_SUCCESS;
+            status = EXIT_SUCCESS;
+            goto poll_exit;
         }
         if (opt_poll_interval > 0) {
             nanosleep(&spec, NULL);
         }
     }
-    return EXIT_SUCCESS;
+
+poll_exit:
+    joy_close(joydev);
+    return status;
 }
 
 

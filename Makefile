@@ -16,7 +16,7 @@ endif
 ifeq ($(UNAME_S),Linux)
 	CC = gcc
 	LD = $(CC)
-	PROG_CFLAGS += `pkg-config --cflags libevdev` -D_XOPEN_SOURCE=700 -DUNIX_COMPILE -DLINUX_COMPILE
+	PROG_CFLAGS += `pkg-config --cflags libevdev` -D_XOPEN_SOURCE=700 -DUNIX_COMPILE -DLINUX_COMPILE -Ilinux
 	PROG_LDFLAGS += `pkg-config --libs libevdev`
 	VPATH += :linux
 endif

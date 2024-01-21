@@ -118,6 +118,8 @@ void          joy_axis_event  (const joy_device_t *joydev, uint16_t code, int32_
 void          joy_button_event(const joy_device_t *joydev, uint16_t code, int32_t value);
 void          joy_hat_event   (const joy_device_t *joydev, uint16_t code, int32_t value);
 
-bool          joy_poll(joy_device_t *joydev);
+bool          joy_open (joy_device_t *joydev);
+bool          joy_poll (joy_device_t *joydev);
+void          joy_close(joy_device_t *joydev);
 
 #endif
