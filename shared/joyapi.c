@@ -274,3 +274,16 @@ void joy_hat_event(const joy_device_t *joydev, uint16_t hat, int32_t value)
     printf("hat event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
            joydev->name, joy_device_get_hat_name(joydev, hat), hat, value);
 }
+
+
+bool joy_poll(joy_device_t *joydev)
+{
+    if (joydev == NULL) {
+        return false;
+    }
+    if (driver.poll == NULL) {
+        return false;
+    }
+    printf("polling %s (Ctrl+C to stop)\n", joydev->node);
+    return driver.poll(joydev);
+}

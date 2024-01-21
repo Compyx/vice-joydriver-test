@@ -2,18 +2,22 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <inttypes.h>
+#include <time.h>
+#include <signal.h>
 
 #include "config.h"
 #include "lib.h"
 #include "cmdline.h"
 #include "joyapi.h"
 
-static bool  opt_verbose      = false;
-static bool  opt_list_devices = false;
-static bool  opt_list_axes    = false;
-static bool  opt_list_buttons = false;
-static bool  opt_list_hats    = false;
-static char *opt_device_node  = NULL;
+static bool  opt_verbose       = false;
+static bool  opt_list_devices  = false;
+static bool  opt_list_axes     = false;
+static bool  opt_list_buttons  = false;
+static bool  opt_list_hats     = false;
+static char *opt_device_node   = NULL;
+static bool  opt_poll_enable   = false;
+static int   opt_poll_interval = 100;
 
 
 static const cmdline_opt_t options[] = {
@@ -28,14 +32,7 @@ static const cmdline_opt_t options[] = {
         .target     = &opt_list_devices,
         .help       = "list all joystick devices"
     },
-    {   .type       = CMDLINE_STRING,
-        .short_name = 'd',
-        .long_name  = "device-node",
-        .param      = "NODE-or-GUID",
-        .target     = &opt_device_node,
-        .help       = "select device by node"
-    },
-    {   .type       = CMDLINE_BOOLEAN,
+   {   .type       = CMDLINE_BOOLEAN,
         .long_name  = "list-axes",
         .target     = &opt_list_axes,
         .help       = "list axes of a device"
@@ -50,13 +47,35 @@ static const cmdline_opt_t options[] = {
         .target     = &opt_list_hats,
         .help       = "list hats of a device"
     },
+    {   .type       = CMDLINE_STRING,
+        .short_name = 'd',
+        .long_name  = "device-node",
+        .param      = "node-or-guid",
+        .target     = &opt_device_node,
+        .help       = "select device by node"
+    },
+    {   .type       = CMDLINE_BOOLEAN,
+        .short_name = 'p',
+        .long_name  = "poll",
+        .target     = &opt_poll_enable,
+        .help       = "start polling device"
+    },
+    {   .type       = CMDLINE_INTEGER,
+        .short_name = 'i',
+        .long_name  = "poll-interval",
+        .target     = &opt_poll_interval,
+        .param      = "msec",
+        .help       = "specificy polling interval"
+    },
 
     CMDLINE_OPTIONS_END
 };
 
 
+static joy_device_t **devices;
 
-static void list_devices(joy_device_t **devices, int num_devices)
+
+static void list_devices(int num_devices)
 {
     for (int i = 0; i < num_devices; i++) {
         if (opt_verbose) {
@@ -70,7 +89,7 @@ static void list_devices(joy_device_t **devices, int num_devices)
 }
 
 
-static joy_device_t *get_device(joy_device_t **devices)
+static joy_device_t *get_device(void)
 {
     joy_device_t *joydev = joy_device_get(devices, opt_device_node);
     if (joydev == NULL) {
@@ -83,7 +102,7 @@ static joy_device_t *get_device(joy_device_t **devices)
 }
 
 
-static bool list_buttons(joy_device_t **devices)
+static bool list_buttons(void)
 {
     joy_device_t *joydev;
     unsigned int  b;
@@ -95,7 +114,7 @@ static bool list_buttons(joy_device_t **devices)
         return false;
     }
 
-    joydev = get_device(devices);
+    joydev = get_device();
     if (joydev == NULL) {
         return false;
     }
@@ -114,7 +133,7 @@ static bool list_buttons(joy_device_t **devices)
 }
 
 
-static bool list_axes(joy_device_t **devices)
+static bool list_axes(void)
 {
     joy_device_t *joydev;
     unsigned int  a;
@@ -126,7 +145,7 @@ static bool list_axes(joy_device_t **devices)
         return false;
     }
 
-    joydev = get_device(devices);
+    joydev = get_device();
     if (joydev == NULL) {
         return false;
     }
@@ -146,7 +165,7 @@ static bool list_axes(joy_device_t **devices)
     return true;
 }
 
-static bool list_hats(joy_device_t **devices)
+static bool list_hats(void)
 {
     joy_device_t *joydev;
     unsigned int  h;
@@ -158,7 +177,7 @@ static bool list_hats(joy_device_t **devices)
         return false;
     }
 
-    joydev = get_device(devices);
+    joydev = get_device();
     if (joydev == NULL) {
         return false;
     }
@@ -183,7 +202,54 @@ static bool list_hats(joy_device_t **devices)
     return true;
 }
 
+static bool stop_polling = false;
 
+static void sig_handler(int s)
+{
+    if (s == SIGINT) {
+        stop_polling = true;
+    }
+}
+
+
+static int poll_loop(void)
+{
+    joy_device_t    *joydev;
+    struct timespec  spec;
+    struct sigaction action = { 0 };
+
+    if (opt_device_node == NULL) {
+        fprintf(stderr, "%s: --poll requires --device-node to be used.\n",
+                cmdline_get_prg_name());
+        return EXIT_FAILURE;
+    }
+
+    joydev = get_device();
+    if (joydev == NULL) {
+        return EXIT_FAILURE;
+    }
+
+    spec.tv_sec  = opt_poll_interval / 1000;
+    spec.tv_nsec = (opt_poll_interval % 1000) * 1000000;
+    stop_polling = false;
+    action.sa_handler = sig_handler;
+
+    sigaction(SIGINT, &action, NULL);
+
+    while (true) {
+        if (!joy_poll(joydev)) {
+            return EXIT_FAILURE;
+        }
+        if (stop_polling) {
+            printf("Caught SIGINT, stopping polling\n");
+            return EXIT_SUCCESS;
+        }
+        if (opt_poll_interval > 0) {
+            nanosleep(&spec, NULL);
+        }
+    }
+    return EXIT_SUCCESS;
+}
 
 
 int main(int argc, char **argv)
@@ -191,7 +257,6 @@ int main(int argc, char **argv)
     char          **args;
     int            result;
     int            status = EXIT_SUCCESS;
-    joy_device_t **devices = NULL;
     int            count;
 
     cmdline_init(PROGRAM_NAME, PROGRAM_VERSION);
@@ -232,28 +297,29 @@ int main(int argc, char **argv)
         status = EXIT_FAILURE;
         goto cleanup;
     }
-    if (opt_list_devices && count > 0){
-        list_devices(devices, count);
+    if (opt_poll_enable) {
+        status = poll_loop();
+    } else if (opt_list_devices && count > 0) {
+        list_devices(count);
     } else {
         if (opt_list_buttons) {
-            if (!list_buttons(devices)) {
+            if (!list_buttons()) {
                 status = EXIT_FAILURE;
                 goto cleanup;
             }
         }
         if (opt_list_axes) {
-            if (!list_axes(devices)) {
+            if (!list_axes()) {
                 status = EXIT_FAILURE;
                 goto cleanup;
             }
         }
         if (opt_list_hats) {
-            if (!list_hats(devices)) {
+            if (!list_hats()) {
                 status = EXIT_FAILURE;
                 goto cleanup;
             }
         }
-
     }
 
 cleanup:

@@ -80,7 +80,7 @@ typedef struct joy_device_s {
  */
 typedef struct joy_driver_s {
     bool (*open) (joy_device_t *joydev); /**< open device for polling */
-    void (*poll) (joy_device_t *joydev); /**< poll device */
+    bool (*poll) (joy_device_t *joydev); /**< poll device */
     void (*close)(joy_device_t *joydev); /**< close device */
 } joy_driver_t;
 
@@ -117,5 +117,7 @@ void          joy_hat_init   (joy_hat_t    *hat);
 void          joy_axis_event  (const joy_device_t *joydev, uint16_t code, int32_t value);
 void          joy_button_event(const joy_device_t *joydev, uint16_t code, int32_t value);
 void          joy_hat_event   (const joy_device_t *joydev, uint16_t code, int32_t value);
+
+bool          joy_poll(joy_device_t *joydev);
 
 #endif

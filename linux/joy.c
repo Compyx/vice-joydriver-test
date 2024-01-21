@@ -56,7 +56,7 @@ typedef struct joy_priv_s {
 /* Forward declarations */
 static bool joydev_open (joy_device_t *joydev);
 static void joydev_close(joy_device_t *joydev);
-static void joydev_poll (joy_device_t *joydev);
+static bool joydev_poll (joy_device_t *joydev);
 
 
 
@@ -415,6 +415,8 @@ static joy_device_t *get_device_data(const char *node)
     scan_axes(joydev, evdev);
     scan_hats(joydev, evdev);
 
+    libevdev_free(evdev);
+    close(fd);
     return joydev;
 }
 
@@ -560,12 +562,13 @@ static void joydev_close(joy_device_t *joydev)
     }
 }
 
-static void joydev_poll(joy_device_t *joydev)
+static bool joydev_poll(joy_device_t *joydev)
 {
-    if (joydev->priv == NULL) {
+    if (joydev == NULL) {
         /* nothing to poll */
-        return;
+        return false;
     }
+    return true;
 }
 
 
