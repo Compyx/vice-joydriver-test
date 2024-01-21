@@ -318,7 +318,6 @@ static joy_device_t *get_device_data(const char *node)
 
 int joy_device_list_init(joy_device_t ***devices)
 {
-    joy_driver_t    driver;
     joy_device_t  **joylist;
     struct dirent **namelist = NULL;
     int             nl_count = 0;
@@ -329,14 +328,6 @@ int joy_device_list_init(joy_device_t ***devices)
     if (devices != NULL) {
         *devices = NULL;
     }
-
-    driver = (joy_driver_t){
-        .open  = joydev_open,
-        .close = joydev_close,
-        .poll  = joydev_poll
-    };
-
-    joy_driver_register(&driver);
 
     nl_count = scandir(ROOT_NODE, &namelist, sd_select, NULL);
     if (nl_count < 0) {
@@ -411,4 +402,21 @@ static void joydev_poll(joy_device_t *joydev)
         /* no file descriptor */
         return;
     }
+}
+
+
+/** \brief  Register BSD joystick driver
+ *
+ * \return  \c true
+ */
+bool joy_init(void)
+{
+    joy_driver_t driver = {
+        .open  = joydev_open,
+        .close = joydev_close,
+        .poll  = joydev_poll
+    };
+
+    joy_driver_register(&driver);
+    return true;
 }
