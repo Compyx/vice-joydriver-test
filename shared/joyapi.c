@@ -279,9 +279,11 @@ void joy_hat_event(const joy_device_t *joydev, uint16_t hat, int32_t value)
 bool joy_poll(joy_device_t *joydev)
 {
     if (joydev == NULL) {
+        fprintf(stderr, "%s(): error: `joydev` is NULL.\n", __func__);
         return false;
     }
     if (driver.poll == NULL) {
+        fprintf(stderr, "%s(): error: no poll() callback registered.\n", __func__);
         return false;
     }
     printf("polling %s (Ctrl+C to stop)\n", joydev->node);

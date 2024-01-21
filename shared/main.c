@@ -3,7 +3,11 @@
 #include <stdbool.h>
 #include <inttypes.h>
 #include <time.h>
+#ifdef WINDOWS_COMPILE
+#include <windows.h>
+#else
 #include <signal.h>
+#endif
 
 #include "config.h"
 #include "lib.h"
@@ -202,21 +206,38 @@ static bool list_hats(void)
     return true;
 }
 
+
+/** \brief  Flag to stop polling
+ *
+ * If set to \c true polling is stopped.
+ */
 static bool stop_polling = false;
 
+#ifdef WINDOWS_COMPILE
+static BOOL consoleHandler(DWORD signal)
+{
+    if (signal == CTRL_C_EVENT) {
+        stop_polling = true;
+    }
+    return TRUE;
+}
+#else
 static void sig_handler(int s)
 {
     if (s == SIGINT) {
         stop_polling = true;
     }
 }
+#endif
 
 
 static int poll_loop(void)
 {
     joy_device_t    *joydev;
     struct timespec  spec;
+#ifndef WINDOWS_COMPILE
     struct sigaction action = { 0 };
+#endif
 
     if (opt_device_node == NULL) {
         fprintf(stderr, "%s: --poll requires --device-node to be used.\n",
@@ -229,12 +250,17 @@ static int poll_loop(void)
         return EXIT_FAILURE;
     }
 
+    /* amazingly nanosleep() is available on Windows (msys2) */
     spec.tv_sec  = opt_poll_interval / 1000;
     spec.tv_nsec = (opt_poll_interval % 1000) * 1000000;
     stop_polling = false;
-    action.sa_handler = sig_handler;
 
+#ifdef WINDOWS_COMPILE
+    SetConsoleCtrlHandler(consoleHandler, TRUE);
+#else
+    action.sa_handler = sig_handler;
     sigaction(SIGINT, &action, NULL);
+#endif
 
     while (true) {
         if (!joy_poll(joydev)) {
@@ -254,10 +280,10 @@ static int poll_loop(void)
 
 int main(int argc, char **argv)
 {
-    char          **args;
-    int            result;
-    int            status = EXIT_SUCCESS;
-    int            count;
+    char **args;
+    int    result;
+    int    status = EXIT_SUCCESS;
+    int    count;
 
     cmdline_init(PROGRAM_NAME, PROGRAM_VERSION);
     if (!cmdline_add_options(options)) {
@@ -289,7 +315,7 @@ int main(int argc, char **argv)
     if (count == 0) {
         printf("No devices found.\n");
     } else if (count == 1) {
-        printf("Found 1 device:\n");
+        printf("Found 1 device.\n");
     } else if (count > 1) {
         printf("Found %d devices.\n", count);
     } else {

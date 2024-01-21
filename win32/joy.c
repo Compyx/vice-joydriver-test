@@ -350,3 +350,35 @@ int joy_device_list_init(joy_device_t ***devices)
     *devices = iter.list;
     return (int)iter.index;
 }
+
+
+static bool joydev_open(__attribute__((unused)) joy_device_t *joydev)
+{
+    printf("%s(): not implemented.\n", __func__);
+    return false;
+}
+
+static bool joydev_poll(__attribute__((unused)) joy_device_t *joydev)
+{
+    printf("%s(): not implemented.\n", __func__);
+    return false;
+}
+
+static void joydev_close(__attribute__((unused)) joy_device_t *joydev)
+{
+    printf("%s(): not implemented.\n", __func__);
+}
+
+
+
+bool joy_init(void)
+{
+    joy_driver_t driver = {
+        .open  = joydev_open,
+        .poll  = joydev_poll,
+        .close = joydev_close
+    };
+
+    joy_driver_register(&driver);
+    return true;
+}

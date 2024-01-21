@@ -38,6 +38,8 @@ ifeq ($(UNAME_S),FreeBSD)
 endif
 
 ifeq ($(UNAME_S),win32)
+	CC = gcc
+	LD = $(CC)
 	PROG_CFLAGS += -DWINDOWS_COMPILE
 	PROG_LDFLAGS += -ldinput8
 	VPATH += :win32
