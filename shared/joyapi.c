@@ -1,3 +1,12 @@
+/** \file   joyapi.h
+ * \brief   Shared joystick code, arch-agnostic
+ * \author  Bas Wassink <b.wassink@ziggo.nl>
+ *
+ * This file contains code that will go into (or replace) VICE's generic
+ * joystick code in \c src/joyport/joystick.c.
+ *
+ * Still a work in progress.
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -168,6 +177,13 @@ joy_device_t *joy_device_get(joy_device_t **devices, const char *node)
 }
 
 
+/** \brief  Get axis name for joystick device
+ *
+ * \param[in]   joydev  joystick device
+ * \param[in]   axis    axis code
+ *
+ * \return  axis name or \a NULL when \a axis is invalid
+ */
 const char *joy_device_get_axis_name(const joy_device_t *joydev, uint16_t axis)
 {
     if (joydev != NULL) {
@@ -181,6 +197,13 @@ const char *joy_device_get_axis_name(const joy_device_t *joydev, uint16_t axis)
 }
 
 
+/** \brief  Get button name for joystick device
+ *
+ * \param[in]   joydev  joystick device
+ * \param[in]   button  button code
+ *
+ * \return  button name or \a NULL when \a button is invalid
+ */
 const char *joy_device_get_button_name(const joy_device_t *joydev, uint16_t button)
 {
     if (joydev != NULL) {
@@ -194,6 +217,13 @@ const char *joy_device_get_button_name(const joy_device_t *joydev, uint16_t butt
 }
 
 
+/** \brief  Get hat name for joystick device
+ *
+ * \param[in]   joydev  joystick device
+ * \param[in]   hat     hat code
+ *
+ * \return  hat name or \a NULL when \a hat is invalid
+ */
 const char *joy_device_get_hat_name(const joy_device_t *joydev, uint16_t hat)
 {
     if (joydev != NULL) {
@@ -253,7 +283,16 @@ void joy_hat_init(joy_hat_t *hat)
 }
 
 
+/* TODO: The following can probably be merged into a single `joy_event()` with
+ *       an event-type argument.
+ */
 
+/** \brief  Joystick axis event
+ *
+ * \param[in]   joydev  joystick device triggering the event
+ * \param[in]   axis    axis code
+ * \param[in]   value   axis value
+ */
 void joy_axis_event(const joy_device_t *joydev, uint16_t axis, int32_t value)
 {
     printf("axis event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
@@ -261,6 +300,12 @@ void joy_axis_event(const joy_device_t *joydev, uint16_t axis, int32_t value)
 }
 
 
+/** \brief  Joystick button event
+ *
+ * \param[in]   joydev  joystick device triggering the event
+ * \param[in]   button  button code
+ * \param[in]   value   button value
+ */
 void joy_button_event(const joy_device_t *joydev, uint16_t button, int32_t value)
 {
     printf("button event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
@@ -269,6 +314,12 @@ void joy_button_event(const joy_device_t *joydev, uint16_t button, int32_t value
 }
 
 
+/** \brief  Joystick hat event
+ *
+ * \param[in]   joydev  joystick device triggering the event
+ * \param[in]   hat     hat code
+ * \param[in]   value   hat value
+ */
 void joy_hat_event(const joy_device_t *joydev, uint16_t hat, int32_t value)
 {
     printf("hat event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
@@ -276,6 +327,12 @@ void joy_hat_event(const joy_device_t *joydev, uint16_t hat, int32_t value)
 }
 
 
+/** \brief  Open joystick device for polling
+ *
+ * \param[in]   joydev  joystick device
+ *
+ * \return  \c true on success
+ */
 bool joy_open(joy_device_t *joydev)
 {
     if (joydev == NULL) {
@@ -290,6 +347,10 @@ bool joy_open(joy_device_t *joydev)
 }
 
 
+/** \brief  Close joystick device
+ *
+ * \param[in]   joydev  joystick device
+ */
 void joy_close(joy_device_t *joydev)
 {
     if (joydev == NULL) {
@@ -302,6 +363,12 @@ void joy_close(joy_device_t *joydev)
 }
 
 
+/** \brief  Poll joystick device for input
+ *
+ * \param[in]   joydev  joystick device
+ *
+ * \return  \c false on fatal error
+ */
 bool joy_poll(joy_device_t *joydev)
 {
     if (joydev == NULL) {
