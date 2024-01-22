@@ -42,22 +42,21 @@ typedef struct {
     uint16_t y; /* Y axis */
 } hat_evcode_t;
 
+/** \brief  Mapping event codes to names */
 typedef struct {
     unsigned int  code;
     const char   *name;
 } ev_code_name_t;
 
+/** \brief  Private data object
+ *
+ * Allocated during device detection, used in the \c open(), \c poll() and
+ * \c close() driver callbacks, freed via the driver's \c priv_free() callback.
+ */
 typedef struct joy_priv_s {
-    struct libevdev *evdev;
-    int              fd;
+    struct libevdev *evdev;     /**< evdev instance */
+    int              fd;        /**< file descriptor */
 } joy_priv_t;
-
-
-/* Forward declarations */
-//static bool joydev_open (joy_device_t *joydev);
-//static void joydev_close(joy_device_t *joydev);
-static bool joydev_poll (joy_device_t *joydev);
-
 
 
 /* The XBox "profile" axis is a recent addition, from kernel ~6.1 onward, so we
@@ -67,6 +66,7 @@ static bool joydev_poll (joy_device_t *joydev);
 #ifndef ABS_PROFILE
 #define ABS_PROFILE 0x21
 #endif
+
 
 /** \brief  Test if an event code is an axis event code
  *
@@ -189,6 +189,29 @@ static const hat_evcode_t hat_event_codes[] = {
 };
 
 
+static joy_priv_t *joydev_priv_new(void)
+{
+    joy_priv_t *priv = lib_malloc(sizeof *priv);
+
+    priv->evdev = NULL;
+    priv->fd    = -1;
+    return priv;
+}
+
+static void joydev_priv_free(void *priv)
+{
+    joy_priv_t *pr = priv;
+
+    if (pr != NULL) {
+        if (pr->evdev) {
+            libevdev_free(pr->evdev);
+        }
+        if (pr->fd >= 0) {
+            close(pr->fd);
+        }
+    }
+    lib_free(priv);
+}
 
 static const char *get_event_code_name(const ev_code_name_t *list,
                                        size_t                length,
@@ -431,6 +454,8 @@ static joy_device_t *get_device_data(const char *node)
     scan_axes(joydev, evdev);
     scan_hats(joydev, evdev);
 
+    joydev->priv = joydev_priv_new();
+
     libevdev_free(evdev);
     close(fd);
     return joydev;
@@ -497,26 +522,6 @@ int joy_device_list_init(joy_device_t ***devices)
 
 
 
-static joy_priv_t *joy_priv_new(void)
-{
-    joy_priv_t *priv = lib_malloc(sizeof *priv);
-
-    priv->evdev = NULL;
-    priv->fd    = -1;
-    return priv;
-}
-
-static void joy_priv_free(joy_priv_t *priv)
-{
-    if (priv->evdev) {
-        libevdev_free(priv->evdev);
-    }
-    if (priv->fd >= 0) {
-        close(priv->fd);
-    }
-    lib_free(priv);
-}
-
 /** \brief  Driver \c open method
  *
  * Open the joystick device for polling.
@@ -535,11 +540,6 @@ static bool joydev_open(joy_device_t *joydev)
     int              fd;
     int              rc;
 
-    if (joydev->priv != NULL) {
-        joy_priv_free(joydev->priv);
-        joydev->priv = NULL;
-    }
-
     fd = open(joydev->node, O_RDONLY|O_NONBLOCK);
     if (fd < 0) {
         fprintf(stderr, "failed to open %s: %s\n", joydev->node, strerror(errno));
@@ -553,10 +553,9 @@ static bool joydev_open(joy_device_t *joydev)
         return false;
     }
 
-    priv         = joy_priv_new();
+    priv         = joydev->priv;
     priv->evdev  = evdev;
     priv->fd     = fd;
-    joydev->priv = priv;
     return true;
 }
 
@@ -573,8 +572,14 @@ static void joydev_close(joy_device_t *joydev)
     joy_priv_t *priv = joydev->priv;
 
     if (priv != NULL) {
-        joy_priv_free(priv);
-        joydev->priv = NULL;
+        if (priv->fd >= 0) {
+            close(priv->fd);
+            priv->fd = -1;
+        }
+        if (priv->evdev != NULL) {
+            libevdev_free(priv->evdev);
+            priv->evdev = NULL;
+        }
     }
 }
 
@@ -650,9 +655,10 @@ static bool joydev_poll(joy_device_t *joydev)
 bool joy_init(void)
 {
     joy_driver_t driver = {
-        .open  = joydev_open,
-        .close = joydev_close,
-        .poll  = joydev_poll
+        .open      = joydev_open,
+        .close     = joydev_close,
+        .poll      = joydev_poll,
+        .priv_free = joydev_priv_free
     };
 
     joy_driver_register(&driver);

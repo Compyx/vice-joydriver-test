@@ -71,17 +71,16 @@ typedef struct joy_device_s {
     joy_axis_t   *axes;             /**< list of axes */
     joy_hat_t    *hats;             /**< list of hats */
 
-    void         *priv;             /**< UNUSED so far, can be used for driver-
-                                         or OS-specific data if absolutely
-                                         required */
+    void         *priv;             /**< used for driver/arch-specific data */
 } joy_device_t;
 
 /** \brief  Joystick driver registration object
  */
 typedef struct joy_driver_s {
-    bool (*open) (joy_device_t *joydev); /**< open device for polling */
-    bool (*poll) (joy_device_t *joydev); /**< poll device */
-    void (*close)(joy_device_t *joydev); /**< close device */
+    bool (*open)     (joy_device_t *joydev);    /**< open device for polling */
+    bool (*poll)     (joy_device_t *joydev);    /**< poll device */
+    void (*close)    (joy_device_t *joydev);    /**< close device */
+    void (*priv_free)(void         *priv);      /**< free private data */
 } joy_driver_t;
 
 

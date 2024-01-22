@@ -33,9 +33,10 @@ static joy_driver_t driver;
  */
 void joy_driver_register(const joy_driver_t *drv)
 {
-    driver.open  = drv->open;
-    driver.close = drv->close;
-    driver.poll  = drv->poll;
+    driver.open      = drv->open;
+    driver.close     = drv->close;
+    driver.poll      = drv->poll;
+    driver.priv_free = drv->priv_free;
 }
 
 
@@ -98,6 +99,9 @@ void joy_device_free(joy_device_t *joydev)
     /* properly close device */
     if (driver.close != NULL) {
         driver.close(joydev);
+    }
+    if (driver.priv_free != NULL && joydev->priv != NULL) {
+        driver.priv_free(joydev->priv);
     }
 
     lib_free(joydev->name);
@@ -358,7 +362,7 @@ void joy_close(joy_device_t *joydev)
     } else if (driver.close == NULL) {
         fprintf(stderr, "%s(): error: no close() callback registered.\n", __func__);
     } else {
-        driver.open(joydev);
+        driver.close(joydev);
     }
 }
 
