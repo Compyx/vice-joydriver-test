@@ -53,25 +53,32 @@
 
 
 #define ROOT_NODE       "/dev"
-#define ROOT_NODE_LEN   4u
+#define ROOT_NODE_LEN   strlen(ROOT_NODE)
 #define NODE_PREFIX     "uhid"
-#define NODE_PREFIX_LEN 4u
+#define NODE_PREFIX_LEN strlen(NODE_PREFIX)
 
 
 static bool joydev_open (joy_device_t *joydev);
+static bool joydev_poll (joy_device_t *joydev);
 static void joydev_close(joy_device_t *joydev);
-static void joydev_poll (joy_device_t *joydev);
 
 
 typedef struct joy_priv_s {
-    int             fd;
+    int            fd;
+    int            report_id;
+    ssize_t        report_size;
+    report_desc_t *report;
 } joy_priv_t;
 
 
 static joy_priv_t *joy_priv_new(void)
 {
     joy_priv_t *priv = lib_malloc(sizeof *priv);
-    priv->fd = -1;
+
+    priv->fd          = -1;
+    priv->report_id   = 0;
+    priv->report_size = 0;
+    priv->report      = NULL;
     return priv;
 }
 
@@ -80,6 +87,9 @@ static void joy_priv_free(joy_priv_t *priv)
     if (priv != NULL) {
         if (priv->fd >= 0) {
             close(priv->fd);
+        }
+        if (priv->report != NULL) {
+            lib_free(priv->report);
         }
         lib_free(priv);
     }
@@ -196,9 +206,11 @@ static void add_joy_hat(hat_iter_t *iter, const struct hid_item *item)
 static joy_device_t *get_device_data(const char *node)
 {
     joy_device_t           *joydev;
+    joy_priv_t             *priv;
     struct usb_device_info  devinfo;
     report_desc_t           report;
     int                     rep_id;
+    int                     rep_size;
     struct hid_data        *hdata;
     struct hid_item         hitem;
     char                   *name;
@@ -240,6 +252,9 @@ static joy_device_t *get_device_data(const char *node)
         close(fd);
         return NULL;
     }
+
+    rep_size = hid_report_size(report, hid_input, rep_id);
+    printf("%s(): report size = %d\n", __func__, rep_size);
 
     /* construct device name */
     name = util_concat(devinfo.udi_vendor, " ", devinfo.udi_product, NULL);
@@ -311,6 +326,13 @@ static joy_device_t *get_device_data(const char *node)
     joydev->hats         = hat_iter.list;
     joydev->num_hats     = (uint32_t)hat_iter.index;
 
+    priv = joy_priv_new();
+    priv->fd          = -1;
+    priv->report_id   = rep_id;
+    priv->report_size = rep_size;
+    priv->report      = lib_malloc((size_t)rep_size);
+    joydev->priv = priv;
+
     close(fd);
     return joydev;
 }
@@ -369,12 +391,6 @@ static bool joydev_open(joy_device_t *joydev)
 {
     joy_priv_t *priv;
     int         fd;
-    struct      hid_item;
-
-    if (joydev->priv != NULL) {
-        joy_priv_free(joydev->priv);
-        joydev->priv = NULL;
-    }
 
     fd = open(joydev->node, O_RDONLY|O_NONBLOCK);
     if (fd < 0) {
@@ -382,26 +398,60 @@ static bool joydev_open(joy_device_t *joydev)
         return false;
     }
 
-    priv         = joy_priv_new();
+    priv = joydev->priv;
     priv->fd     = fd;
-    joydev->priv = priv;
     return true;
 }
 
 static void joydev_close(joy_device_t *joydev)
 {
-    if (joydev->priv != NULL) {
-        joy_priv_free(joydev->priv);
-        joydev->priv = NULL;
+    joy_priv_t *priv = joydev->priv;
+
+    if (priv != NULL && priv->fd >= 0) {
+        close(priv->fd);
     }
 }
 
-static void joydev_poll(joy_device_t *joydev)
+static bool joydev_poll(joy_device_t *joydev)
 {
-    if (joydev->priv == NULL) {
-        /* no file descriptor */
-        return;
+    joy_priv_t *priv;
+    ssize_t     rsize;
+
+    priv = joydev->priv;
+    if (priv == NULL || priv->fd < 0) {
+        return false;
     }
+
+    while ((rsize = read(priv->fd, priv->report, (size_t)(priv->report_size))) == priv->report_size) {
+        struct hid_item  item;
+        struct hid_data *data;
+
+        printf("%s(): parsing report\n", __func__);
+#if 0
+        data = hid_start_parse(*(priv->report), 1 << hid_input, priv->report_id);
+        while (hid_get_item(data, &item) > 0) {
+            int32_t value = hid_get_data(*(priv->report), &item);
+
+            /* do stuff */
+            switch (HID_PAGE(item.usage)) {
+                case HUP_BUTTON:
+                    printf("%s(): button %d: %d\n",
+                           __func__, HID_USAGE(item.usage), value);
+                    break;
+                default:
+                    break;
+            }
+
+        }
+        hid_end_parse(data);
+#endif
+    }
+
+    if (rsize != -1 && errno != EAGAIN) {
+        fprintf(stderr, "%s(): warning: weird report size: %zd: %s\n",
+                __func__, rsize, strerror(errno));
+    }
+    return true;
 }
 
 
