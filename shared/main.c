@@ -20,7 +20,6 @@ static bool  opt_list_devices  = false;
 static bool  opt_list_axes     = false;
 static bool  opt_list_buttons  = false;
 static bool  opt_list_hats     = false;
-static char *opt_device_node   = NULL;
 static bool  opt_poll_enable   = false;
 static int   opt_poll_interval = 100;
 
@@ -52,13 +51,6 @@ static const cmdline_opt_t options[] = {
         .target     = &opt_list_hats,
         .help       = "list hats of a device"
     },
-    {   .type       = CMDLINE_STRING,
-        .short_name = 'd',
-        .long_name  = "device-node",
-        .param      = "node-or-guid",
-        .target     = &opt_device_node,
-        .help       = "select device by node"
-    },
     {   .type       = CMDLINE_BOOLEAN,
         .short_name = 'p',
         .long_name  = "poll",
@@ -77,12 +69,142 @@ static const cmdline_opt_t options[] = {
 };
 
 
+/** \brief  List of joystick devices found */
 static joy_device_t **devices;
+/** \brief  Number of joystick devices found */
+static int devcount;
+/** \brief  Non-option arguments (devices to list/poll) */
+static char **args;
+/** \brief  Number of non-option arguments */
+static int argcount;
 
 
-static void list_devices(int num_devices)
+/** \brief  Check if we have at least one device node/GUID
+ *
+ * Check non-option arg count, print error message when no non-option arguments
+ * were specified.
+ *
+ * \param[in]   optname option name (without leading --) for error message
+ *
+ * \return  \c true if arg count > 0
+ */
+static bool has_required_args(const char *optname)
 {
-    for (int i = 0; i < num_devices; i++) {
+    if (argcount == 0) {
+        fprintf(stderr, "%s: error: --%s requires at least one device node.\n",
+                cmdline_get_prg_name(), optname);
+        return false;
+    }
+    return true;
+}
+
+/** \brief  List buttons for requested devices
+ *
+ * \return  \c true on success
+ */
+static bool list_buttons(void)
+{
+    if (!has_required_args("list-buttons")) {
+        return false;
+    }
+
+    for (int i = 0; i < argcount; i++) {
+        joy_device_t *joydev = joy_device_get(devices, args[i]);
+
+        if (joydev == NULL) {
+            fprintf(stderr,
+                    "%s: error: failed to find device %s, skipping.\n",
+                    cmdline_get_prg_name(), args[i]);
+        } else if (joydev->num_buttons == 0) {
+            printf("No buttons for device found.\n");
+        } else {
+            printf("Buttons for device %s (%s):\n", args[i], joydev->name);
+            for (uint32_t b = 0; b < joydev->num_buttons; b++) {
+                joy_button_t *button = &(joydev->buttons[b]);
+
+                printf("%2u: code: %0x4, name: %s\n", b, button->code, button->name);
+            }
+        }
+    }
+    return true;
+}
+
+/** \brief  List axes for requested devices
+ *
+ * \return  \c true on success
+ */
+static bool list_axes(void)
+{
+
+    if (!has_required_args("list-axes")) {
+        return false;
+    }
+
+    for (int i = 0; i < argcount; i++) {
+        joy_device_t *joydev = joy_device_get(devices, args[i]);
+
+        if (joydev == NULL) {
+            fprintf(stderr,
+                    "%s: error: failed to find device %s, skipping.\n",
+                    cmdline_get_prg_name(), args[i]);
+        } else  if (joydev->num_axes == 0) {
+            printf("No axes for device found.\n");
+        } else {
+            printf("Axes for device %s (%s):\n", args[i], joydev->name);
+            for (uint32_t a = 0; a < joydev->num_axes; a++) {
+                joy_axis_t *axis = &joydev->axes[a];
+
+                printf("%2u: code: %04x, name: %s, range: %"PRId32" - %"PRId32"\n",
+                       a, axis->code, axis->name, axis->minimum, axis->maximum);
+            }
+        }
+    }
+    return true;
+}
+
+/** \brief  List hats for requested devices
+ *
+ * \return  \c true on success
+ */
+static bool list_hats(void)
+{
+    if (!has_required_args("list-hats")) {
+        return false;
+    }
+
+    for (int i = 0; i < argcount; i++) {
+        joy_device_t *joydev = joy_device_get(devices, args[i]);
+
+        if (joydev == NULL) {
+            fprintf(stderr,
+                    "%s: error: failed to find device %s, skipping.\n",
+                    cmdline_get_prg_name(), args[i]);
+        } else  if (joydev->num_hats == 0) {
+            printf("No hats for device found.\n");
+        } else {
+            printf("Hats for device %s (%s):\n", args[i], joydev->name);
+
+            for (uint32_t h = 0; h < joydev->num_hats; h++) {
+                joy_hat_t *hat = &(joydev->hats[h]);
+                joy_axis_t *x = &(hat->x);
+                joy_axis_t *y = &(hat->y);
+
+                printf("%2x: name: %s\n", h, hat->name);
+                printf("    X axis: code: %04x, name: %s, range: %"PRId32" - %"PRId32"\n",
+                       x->code, x->name, x->minimum, x->maximum);
+                printf("    Y axis: code: %04x, name: %s, range: %"PRId32" - %"PRId32"\n",
+                       y->code, y->name, y->minimum, y->maximum);
+
+            }
+        }
+    }
+    return true;
+}
+
+/** \brief  List devices found */
+static void list_devices(void)
+{
+    for (int i = 0; i < devcount; i++) {
         if (opt_verbose) {
             printf("device %d:\n", i);
         }
@@ -92,121 +214,6 @@ static void list_devices(int num_devices)
         }
     }
 }
-
-
-static joy_device_t *get_device(void)
-{
-    joy_device_t *joydev = joy_device_get(devices, opt_device_node);
-    if (joydev == NULL) {
-        fprintf(stderr,
-                "%s: error: could not find device '%s'.\n",
-                cmdline_get_prg_name(), opt_device_node);
-        return NULL;
-    }
-    return joydev;
-}
-
-
-static bool list_buttons(void)
-{
-    joy_device_t *joydev;
-    unsigned int  b;
-
-    if (opt_device_node == NULL) {
-        fprintf(stderr,
-                "%s: error: --list-buttons requires --device-node to be used.\n",
-                cmdline_get_prg_name());
-        return false;
-    }
-
-    joydev = get_device();
-    if (joydev == NULL) {
-        return false;
-    }
-
-    if (joydev->num_buttons == 0) {
-        printf("No buttons for device found.\n");
-        return true;
-    }
-    printf("Buttons:\n");
-    for (b = 0; b < joydev->num_buttons; b++) {
-        joy_button_t *button = &(joydev->buttons[b]);
-
-        printf("%2u: code: %0x4, name: %s\n", b, button->code, button->name);
-    }
-    return true;
-}
-
-
-static bool list_axes(void)
-{
-    joy_device_t *joydev;
-    unsigned int  a;
-
-    if (opt_device_node == NULL) {
-        fprintf(stderr,
-                "%s: error: --list-axes requires --device-node to be used.\n",
-                cmdline_get_prg_name());
-        return false;
-    }
-
-    joydev = get_device();
-    if (joydev == NULL) {
-        return false;
-    }
-
-    if (joydev->num_axes == 0) {
-        printf("No axes for device found.\n");
-        return true;
-    }
-    printf("Axes:\n");
-    for (a = 0; a < joydev->num_axes; a++) {
-        joy_axis_t *axis = &joydev->axes[a];
-
-        printf("%2u: code: %04x, name: %s, range: %"PRId32" - %"PRId32"\n",
-                a, axis->code, axis->name, axis->minimum, axis->maximum);
-
-    }
-    return true;
-}
-
-static bool list_hats(void)
-{
-    joy_device_t *joydev;
-    unsigned int  h;
-
-    if (opt_device_node == NULL) {
-        fprintf(stderr,
-                "%s: error: --list-hats requires --device-node to be used.\n",
-                cmdline_get_prg_name());
-        return false;
-    }
-
-    joydev = get_device();
-    if (joydev == NULL) {
-        return false;
-    }
-
-    if (joydev->num_hats == 0) {
-        printf("No hats for device found.\n");
-        return true;
-    }
-    printf("Hats:\n");
-    for (h = 0; h < joydev->num_hats; h++) {
-        joy_hat_t *hat = &(joydev->hats[h]);
-        joy_axis_t *x = &(hat->x);
-        joy_axis_t *y = &(hat->y);
-
-        printf("%2x: name: %s\n", h, hat->name);
-        printf("    X axis: code: %04x, name: %s, range: %"PRId32" - %"PRId32"\n",
-               x->code, x->name, x->minimum, x->maximum);
-        printf("    Y axis: code: %04x, name: %s, range: %"PRId32" - %"PRId32"\n",
-               y->code, y->name, y->minimum, y->maximum);
-
-    }
-    return true;
-}
-
 
 /** \brief  Flag to stop polling
  *
@@ -241,19 +248,22 @@ static int poll_loop(void)
 #endif
     int status = EXIT_SUCCESS;
 
-    if (opt_device_node == NULL) {
-        fprintf(stderr, "%s: --poll requires --device-node to be used.\n",
+    if (argcount == 0) {
+        fprintf(stderr, "%s: --poll requires at least one device node.\n",
                 cmdline_get_prg_name());
         return EXIT_FAILURE;
     }
 
-    joydev = get_device();
+    /* just the first argument for now */
+    joydev = joy_device_get(devices, args[0]);
     if (joydev == NULL) {
         return EXIT_FAILURE;
     }
 
     if (!joy_open(joydev)) {
-        fprintf(stderr, "%s(): failed to open device.\n", __func__);
+        fprintf(stderr,
+                "%s: failed to open device %s.\n",
+                cmdline_get_prg_name(), args[0]);
         return EXIT_FAILURE;
     }
 
@@ -292,10 +302,7 @@ poll_exit:
 
 int main(int argc, char **argv)
 {
-    char **args;
-    int    result;
-    int    status = EXIT_SUCCESS;
-    int    count;
+    int status = EXIT_SUCCESS;
 
     cmdline_init(PROGRAM_NAME, PROGRAM_VERSION);
     if (!cmdline_add_options(options)) {
@@ -309,11 +316,11 @@ int main(int argc, char **argv)
         return EXIT_SUCCESS;
     }
 
-    result = cmdline_parse(argc, argv, &args);
-    if (result == CMDLINE_ERROR) {
+    argcount = cmdline_parse(argc, argv, &args);
+    if (argcount == CMDLINE_ERROR) {
         status = EXIT_FAILURE;
         goto cleanup;
-    } else if (result == CMDLINE_HELP || result == CMDLINE_VERSION) {
+    } else if (argcount == CMDLINE_HELP || argcount == CMDLINE_VERSION) {
         goto cleanup;
     }
 
@@ -323,22 +330,23 @@ int main(int argc, char **argv)
     joy_init();
 
     /* enumerate connected devices */
-    count = joy_device_list_init(&devices);
-    if (count == 0) {
+    devcount = joy_device_list_init(&devices);
+    if (devcount == 0) {
         printf("No devices found.\n");
-    } else if (count == 1) {
+    } else if (devcount == 1) {
         printf("Found 1 device.\n");
-    } else if (count > 1) {
-        printf("Found %d devices.\n", count);
+    } else if (devcount > 1) {
+        printf("Found %d devices.\n", devcount);
     } else {
         printf("%s: error querying devices.\n", cmdline_get_prg_name());
         status = EXIT_FAILURE;
         goto cleanup;
     }
+
     if (opt_poll_enable) {
         status = poll_loop();
-    } else if (opt_list_devices && count > 0) {
-        list_devices(count);
+    } else if (opt_list_devices && devcount > 0) {
+        list_devices();
     } else {
         if (opt_list_buttons) {
             if (!list_buttons()) {
@@ -361,7 +369,6 @@ int main(int argc, char **argv)
     }
 
 cleanup:
-    lib_free(opt_device_node);
     joy_device_list_free(devices);
     cmdline_free();
     return status;
