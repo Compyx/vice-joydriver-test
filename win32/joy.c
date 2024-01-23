@@ -80,8 +80,35 @@ typedef struct {
 /** \brief  Initial number of elements allocated for the hats list */
 #define HATS_INITIAL_SIZE   4
 
+
+typedef struct joy_priv_s {
+    LPDIRECTINPUTDEVICE8 didev;
+} joy_priv_t;
+
+
 /** \brief  Global DirectInput8 interface handle */
 static LPDIRECTINPUT8 dinput_handle = NULL;
+
+
+
+static joy_priv_t *joy_priv_new(void)
+{
+    joy_priv_t *priv = lib_malloc(sizeof *priv);
+
+    priv->didev = NULL;
+    return priv;
+}
+
+static void joy_priv_free(void *priv)
+{
+    joy_priv_t *pr = priv;
+
+    if (pr != NULL) {
+        IDirectInputDevice8_Release(pr->didev);
+        lib_free(pr);
+    }
+}
+
 
 
 /** \brief  Transform a WinAPI "GUID" to string
@@ -222,6 +249,7 @@ static BOOL EnumObjects_hats_cb(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
 static BOOL EnumDevices_cb(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
 {
     joy_device_t         *joydev;
+    joy_priv_t           *priv;
     DIDEVCAPS             caps;
     LPDIRECTINPUTDEVICE8  didev;
     uint16_t              vendor;
@@ -244,7 +272,7 @@ static BOOL EnumDevices_cb(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
                                         &didev,
                                         NULL);
     if (result != DI_OK) {
-        return -1;
+        return DIENUM_STOP;
     }
     IDirectInputDevice8_SetDataFormat(didev, &c_dfDIJoystick);
     IDirectInputDevice8_SetCooperativeLevel(didev,
@@ -253,7 +281,7 @@ static BOOL EnumDevices_cb(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
     caps.dwSize = sizeof(DIDEVCAPS);
     result = IDirectInputDevice8_GetCapabilities(didev, &caps);
     if (result != DI_OK) {
-        return -1;
+        return DIENUM_STOP;
     }
 
     vendor  = (uint16_t)(ddi->guidProduct.Data1 & 0xffff);
@@ -309,7 +337,11 @@ static BOOL EnumDevices_cb(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
     device_iter->list[device_iter->index++] = joydev;
     device_iter->list[device_iter->index]   = NULL;
 
-    IDirectInputDevice8_Release(didev);
+    priv = joy_priv_new();
+    priv->didev = didev;
+    joydev->priv = priv;
+
+//    IDirectInputDevice8_Release(didev);
     return DIENUM_CONTINUE;
 }
 
@@ -352,21 +384,55 @@ int joy_device_list_init(joy_device_t ***devices)
 }
 
 
-static bool joydev_open(__attribute__((unused)) joy_device_t *joydev)
+static bool joydev_open(joy_device_t *joydev)
 {
-    printf("%s(): not implemented.\n", __func__);
-    return false;
+    joy_priv_t *priv = joydev->priv;
+
+    printf("%s(): opening device %s: ", __func__, joydev->name);
+    if (IDirectInputDevice8_Acquire(priv->didev) != DI_OK) {
+        printf("failed!\n");
+        return false;
+    }
+    printf("OK.\n");
+    return true;
 }
 
-static bool joydev_poll(__attribute__((unused)) joy_device_t *joydev)
+static bool joydev_poll(joy_device_t *joydev)
 {
-    printf("%s(): not implemented.\n", __func__);
-    return false;
+    joy_priv_t           *priv;
+    DIJOYSTATE            jstate;
+    LPDIRECTINPUTDEVICE8  didev;
+    HRESULT               result;
+
+    priv   = joydev->priv;
+    didev  = priv->didev;
+    result = IDirectInputDevice8_Poll(didev);
+    if (result != DI_OK && result != DI_NOEFFECT) {
+        fprintf(stderr,
+                "%s(): Poll() failed: %lx\n",
+                __func__, result);
+        return false;
+    }
+    result = IDirectInputDevice8_GetDeviceState(didev, sizeof(DIJOYSTATE), &jstate);
+    if (result != DI_OK) {
+        fprintf(stderr,
+                "%s(): GetDeviceState() failed: %lx\n",
+                __func__, result);
+        return false;
+    }
+
+    for (uint32_t b = 0; b < joydev->num_buttons; b++) {
+        joy_button_event(joydev, (uint16_t)b, jstate.rgbButtons[b] & 0x80);
+    }
+
+    return true;
 }
 
-static void joydev_close(__attribute__((unused)) joy_device_t *joydev)
+static void joydev_close(joy_device_t *joydev)
 {
-    printf("%s(): not implemented.\n", __func__);
+    joy_priv_t *priv = joydev->priv;
+
+    IDirectInputDevice8_Unacquire(priv->didev);
 }
 
 
@@ -374,9 +440,10 @@ static void joydev_close(__attribute__((unused)) joy_device_t *joydev)
 bool joy_init(void)
 {
     joy_driver_t driver = {
-        .open  = joydev_open,
-        .poll  = joydev_poll,
-        .close = joydev_close
+        .open      = joydev_open,
+        .poll      = joydev_poll,
+        .close     = joydev_close,
+        .priv_free = joy_priv_free
     };
 
     joy_driver_register(&driver);
