@@ -257,8 +257,12 @@ static int poll_loop(void)
     /* just the first argument for now */
     joydev = joy_device_get(devices, args[0]);
     if (joydev == NULL) {
+        fprintf(stderr, "%s: error: could not find device %s.\n",
+                cmdline_get_prg_name(), args[0]);
         return EXIT_FAILURE;
     }
+
+    printf("Polling device %s:\n", args[0]);
 
     if (!joy_open(joydev)) {
         fprintf(stderr,

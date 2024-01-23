@@ -58,16 +58,12 @@
 #define NODE_PREFIX_LEN strlen(NODE_PREFIX)
 
 
-static bool joydev_open (joy_device_t *joydev);
-static bool joydev_poll (joy_device_t *joydev);
-static void joydev_close(joy_device_t *joydev);
-
-
 typedef struct joy_priv_s {
+    void          *buffer;
+    report_desc_t  rep_desc;
+    ssize_t        rep_size;
+    int            rep_id;
     int            fd;
-    int            report_id;
-    ssize_t        report_size;
-    report_desc_t *report;
 } joy_priv_t;
 
 
@@ -75,23 +71,29 @@ static joy_priv_t *joy_priv_new(void)
 {
     joy_priv_t *priv = lib_malloc(sizeof *priv);
 
-    priv->fd          = -1;
-    priv->report_id   = 0;
-    priv->report_size = 0;
-    priv->report      = NULL;
+    priv->fd       = -1;
+    priv->rep_id   = 0;
+    priv->rep_size = 0;
+    priv->buffer   = NULL;
+    priv->rep_desc = NULL;
+
     return priv;
 }
 
-static void joy_priv_free(joy_priv_t *priv)
+static void joy_priv_free(void *priv)
 {
-    if (priv != NULL) {
-        if (priv->fd >= 0) {
-            close(priv->fd);
+    joy_priv_t *pr = priv;
+    if (pr != NULL) {
+        if (pr->fd >= 0) {
+            close(pr->fd);
         }
-        if (priv->report != NULL) {
-            lib_free(priv->report);
+        if (pr->buffer != NULL) {
+            lib_free(pr->buffer);
         }
-        lib_free(priv);
+        if (pr->rep_desc != NULL) {
+            hid_dispose_report_desc(pr->rep_desc);
+        }
+        lib_free(pr);
     }
 }
 
@@ -317,7 +319,7 @@ static joy_device_t *get_device_data(const char *node)
         }
     }
     hid_end_parse(hdata);
-    hid_dispose_report_desc(report);
+//    hid_dispose_report_desc(report);
 
     joydev->axes         = axis_iter.list;
     joydev->num_axes     = (uint32_t)axis_iter.index;
@@ -328,9 +330,10 @@ static joy_device_t *get_device_data(const char *node)
 
     priv = joy_priv_new();
     priv->fd          = -1;
-    priv->report_id   = rep_id;
-    priv->report_size = rep_size;
-    priv->report      = lib_malloc((size_t)rep_size);
+    priv->rep_id   = rep_id;
+    priv->rep_size = rep_size;
+    priv->buffer      = lib_malloc((size_t)rep_size);
+    priv->rep_desc    = report;
     joydev->priv = priv;
 
     close(fd);
@@ -422,15 +425,15 @@ static bool joydev_poll(joy_device_t *joydev)
         return false;
     }
 
-    while ((rsize = read(priv->fd, priv->report, (size_t)(priv->report_size))) == priv->report_size) {
+    while ((rsize = read(priv->fd, priv->buffer, (size_t)(priv->rep_size))) == priv->rep_size) {
         struct hid_item  item;
         struct hid_data *data;
 
         printf("%s(): parsing report\n", __func__);
-#if 0
-        data = hid_start_parse(*(priv->report), 1 << hid_input, priv->report_id);
+
+        data = hid_start_parse(priv->rep_desc, 1 << hid_input, priv->rep_id);
         while (hid_get_item(data, &item) > 0) {
-            int32_t value = hid_get_data(*(priv->report), &item);
+            int32_t value = hid_get_data(priv->buffer, &item);
 
             /* do stuff */
             switch (HID_PAGE(item.usage)) {
@@ -444,7 +447,6 @@ static bool joydev_poll(joy_device_t *joydev)
 
         }
         hid_end_parse(data);
-#endif
     }
 
     if (rsize != -1 && errno != EAGAIN) {
@@ -464,7 +466,8 @@ bool joy_init(void)
     joy_driver_t driver = {
         .open  = joydev_open,
         .close = joydev_close,
-        .poll  = joydev_poll
+        .poll  = joydev_poll,
+        .priv_free = joy_priv_free
     };
 
     joy_driver_register(&driver);
