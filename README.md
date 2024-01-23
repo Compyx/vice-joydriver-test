@@ -71,6 +71,9 @@ Usage is fairly simple: `vice-joydriver-test [options] [<device1> <device2> .. <
 Most options require at least one device node/GUID specified on the command
 line.
 
+***To avoid having to type the huge GUIDs on Windows, the device arguments can
+also be given as 0-based indexes.***
+
 Using `vice-joydriver-test --list-devices` will list all joystick devices
 found, when passing `--verbose` the output will be more verbose.
 

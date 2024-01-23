@@ -79,6 +79,38 @@ static char **args;
 static int argcount;
 
 
+/** \brief  Get device by node/GUID or index
+ *
+ * Try to get a device by its node/GUID and if that fails try converting \a id
+ * to an integer and using that as an index into the devices list.
+ *
+ * \param[in]   id  node/GUID or index
+ *
+ * \return  joystick device or \c NULL when not found
+ */
+static joy_device_t *get_device(const char *id)
+{
+    joy_device_t *joydev = NULL;
+
+    joydev = joy_device_get(devices, id);
+    if (joydev == NULL) {
+        /* try using the id as an index */
+        long  index;
+        char *endptr;
+
+        index = strtol(id, &endptr, 0);
+        if (endptr > id && *endptr == '\0') {
+            if (index >= 0 && index < devcount) {
+                joydev = devices[index];
+            } else {
+                fprintf(stderr, "%s: index out of range: %ld.\n",
+                        cmdline_get_prg_name(), index);
+            }
+        }
+    }
+    return joydev;
+}
+
 /** \brief  Check if we have at least one device node/GUID
  *
  * Check non-option arg count, print error message when no non-option arguments
@@ -109,7 +141,7 @@ static bool list_buttons(void)
     }
 
     for (int i = 0; i < argcount; i++) {
-        joy_device_t *joydev = joy_device_get(devices, args[i]);
+        joy_device_t *joydev = get_device(args[i]);
 
         if (joydev == NULL) {
             fprintf(stderr,
@@ -141,7 +173,7 @@ static bool list_axes(void)
     }
 
     for (int i = 0; i < argcount; i++) {
-        joy_device_t *joydev = joy_device_get(devices, args[i]);
+        joy_device_t *joydev = get_device(args[i]);
 
         if (joydev == NULL) {
             fprintf(stderr,
@@ -173,7 +205,7 @@ static bool list_hats(void)
     }
 
     for (int i = 0; i < argcount; i++) {
-        joy_device_t *joydev = joy_device_get(devices, args[i]);
+        joy_device_t *joydev = get_device(args[i]);
 
         if (joydev == NULL) {
             fprintf(stderr,
