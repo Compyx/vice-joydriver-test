@@ -257,6 +257,12 @@ static joy_device_t *get_device_data(const char *node)
 
     rep_size = hid_report_size(report, hid_input, rep_id);
     printf("%s(): report size = %d\n", __func__, rep_size);
+    if (rep_size <= 0) {
+        fprintf(stderr, "%s(): invalid report size of %d.\n", __func__, rep_size);
+        hid_dispose_report_desc(report);
+        close(fd);
+        return NULL;
+    }
 
     /* construct device name */
     name = util_concat(devinfo.udi_vendor, " ", devinfo.udi_product, NULL);
@@ -277,6 +283,14 @@ static joy_device_t *get_device_data(const char *node)
     LIST_ITER_INIT(&hat_iter, 4u);
 
     hdata = hid_start_parse(report, 1 << hid_input, rep_id);
+    if (hdata == NULL) {
+        fprintf(stderr, "%s(): hid_start_parse() failed: %d (%s).\n",
+                __func__, errno, strerror(errno));
+        hid_dispose_report_desc(report);
+        close(fd);
+        joy_device_free(joydev);
+        return NULL;
+    }
     while (hid_get_item(hdata, &hitem) > 0) {
         unsigned int page  = HID_PAGE (hitem.usage);
         int          usage = HID_USAGE(hitem.usage);
@@ -319,7 +333,6 @@ static joy_device_t *get_device_data(const char *node)
         }
     }
     hid_end_parse(hdata);
-//    hid_dispose_report_desc(report);
 
     joydev->axes         = axis_iter.list;
     joydev->num_axes     = (uint32_t)axis_iter.index;
@@ -328,13 +341,13 @@ static joy_device_t *get_device_data(const char *node)
     joydev->hats         = hat_iter.list;
     joydev->num_hats     = (uint32_t)hat_iter.index;
 
-    priv = joy_priv_new();
-    priv->fd          = -1;
+    priv           = joy_priv_new();
+    priv->fd       = -1;
     priv->rep_id   = rep_id;
     priv->rep_size = rep_size;
-    priv->buffer      = lib_malloc((size_t)rep_size);
-    priv->rep_desc    = report;
-    joydev->priv = priv;
+    priv->buffer   = lib_malloc((size_t)rep_size);
+    priv->rep_desc = report;
+    joydev->priv   = priv;
 
     close(fd);
     return joydev;
@@ -432,10 +445,16 @@ static bool joydev_poll(joy_device_t *joydev)
         printf("%s(): parsing report\n", __func__);
 
         data = hid_start_parse(priv->rep_desc, 1 << hid_input, priv->rep_id);
+        if (data == NULL) {
+            fprintf(stderr, "%s(): hid_start_parse() failed: %d (%s).\n",
+                    __func__, errno, strerror(errno));
+            return false;
+        }
+
         while (hid_get_item(data, &item) > 0) {
             int32_t      value = hid_get_data(priv->buffer, &item);
-            unsigned int usage = HID_USAGE(item.usage);
-            int          page  = HID_PAGE(item.usage);
+            int          usage = HID_USAGE(item.usage);
+            unsigned int page  = HID_PAGE(item.usage);
 
             /* do stuff */
             switch (page) {
