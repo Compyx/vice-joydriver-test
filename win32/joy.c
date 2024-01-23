@@ -274,7 +274,7 @@ static BOOL EnumDevices_cb(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
     if (result != DI_OK) {
         return DIENUM_STOP;
     }
-    IDirectInputDevice8_SetDataFormat(didev, &c_dfDIJoystick);
+    IDirectInputDevice8_SetDataFormat(didev, &c_dfDIJoystick2);
     IDirectInputDevice8_SetCooperativeLevel(didev,
                                             (HWND)window,
                                             DISCL_NONEXCLUSIVE|DISCL_BACKGROUND);
@@ -400,7 +400,7 @@ static bool joydev_open(joy_device_t *joydev)
 static bool joydev_poll(joy_device_t *joydev)
 {
     joy_priv_t           *priv;
-    DIJOYSTATE            jstate;
+    DIJOYSTATE2           jstate;
     LPDIRECTINPUTDEVICE8  didev;
     HRESULT               result;
 
