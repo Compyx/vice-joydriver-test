@@ -433,18 +433,60 @@ static bool joydev_poll(joy_device_t *joydev)
 
         data = hid_start_parse(priv->rep_desc, 1 << hid_input, priv->rep_id);
         while (hid_get_item(data, &item) > 0) {
-            int32_t value = hid_get_data(priv->buffer, &item);
+            int32_t      value = hid_get_data(priv->buffer, &item);
+            unsigned int usage = HID_USAGE(item.usage);
+            int          page  = HID_PAGE(item.usage);
 
             /* do stuff */
-            switch (HID_PAGE(item.usage)) {
+            switch (page) {
+                case HUP_GENERIC_DESKTOP:
+                    switch (usage) {
+                        case HUG_X:     /* fall through */
+                        case HUG_Y:     /* fall through */
+                        case HUG_Z:     /* fall through */
+                        case HUG_RX:    /* fall through */
+                        case HUG_RY:    /* fall through */
+                        case HUG_RZ:    /* fall through */
+                        case HUG_SLIDER:
+                            /* axis */
+#if 0
+                            printf("%s(): axis %d: %d\n",
+                                   __func__, usage, value);
+#endif
+                            joy_axis_event(joydev, (uint16_t)usage, value);
+                            break;
+                        case HUG_HAT_SWITCH:
+#if 0
+                            printf("%s(): hat switch: %d\n",
+                                   __func__, value);
+#endif
+                            joy_hat_event(joydev, (uint16_t)usage, value);
+                            break;
+                        case HUG_D_PAD_UP:      /* fall through */
+                        case HUG_D_PAD_DOWN:    /* fall through */
+                        case HUG_D_PAD_LEFT:    /* fall through */
+                        case HUG_D_PAD_RIGHT:
+                            /* treat D-Pad as buttons */
+#if 0
+                            printf("%s(): D-Pad %d: %d\n",
+                                   __func__, usage, value);
+#endif
+                            joy_button_event(joydev, (uint16_t)usage, value);
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
                 case HUP_BUTTON:
+#if 0
                     printf("%s(): button %d: %d\n",
-                           __func__, HID_USAGE(item.usage), value);
+                           __func__, usage, value);
+#endif
+                    joy_button_event(joydev, (uint16_t)usage, value);
                     break;
                 default:
                     break;
             }
-
         }
         hid_end_parse(data);
     }
