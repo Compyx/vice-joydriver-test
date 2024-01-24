@@ -15,7 +15,9 @@
 #include "joyapi.h"
 
 
-static bool  opt_verbose       = false;
+/** \brief  Enable more verbose output */
+bool         verbose = false;
+
 static bool  opt_list_devices  = false;
 static bool  opt_list_axes     = false;
 static bool  opt_list_buttons  = false;
@@ -28,8 +30,8 @@ static const cmdline_opt_t options[] = {
     {   .type       = CMDLINE_BOOLEAN,
         .short_name = 'v',
         .long_name  = "verbose",
-        .target     = &opt_verbose,
-        .help       = "enable verbose messages",
+        .target     = &verbose,
+        .help       = "enable more verbose output",
     },
     {   .type       = CMDLINE_BOOLEAN,
         .long_name  = "list-devices",
@@ -154,7 +156,11 @@ static bool list_buttons(void)
             for (uint32_t b = 0; b < joydev->num_buttons; b++) {
                 joy_button_t *button = &(joydev->buttons[b]);
 
-                printf("%2u: code: %0x4, name: %s\n", b, button->code, button->name);
+                if (verbose) {
+                    printf("%2u: name: %s, code: %04x\n", b, button->name, button->code);
+                } else {
+                    printf("%2u: %s\n", b, button->name);
+                }
             }
         }
     }
@@ -186,8 +192,12 @@ static bool list_axes(void)
             for (uint32_t a = 0; a < joydev->num_axes; a++) {
                 joy_axis_t *axis = &joydev->axes[a];
 
-                printf("%2u: code: %04x, name: %s, range: %"PRId32" - %"PRId32"\n",
-                       a, axis->code, axis->name, axis->minimum, axis->maximum);
+                if (verbose) {
+                    printf("%2u: %s, code: %04x, range: %"PRId32" - %"PRId32"\n",
+                           a, axis->name, axis->code, axis->minimum, axis->maximum);
+                } else {
+                    printf("%2u: %s\n", a, axis->name);
+                }
             }
         }
     }
@@ -221,11 +231,13 @@ static bool list_hats(void)
                 joy_axis_t *x = &(hat->x);
                 joy_axis_t *y = &(hat->y);
 
-                printf("%2x: name: %s\n", h, hat->name);
-                printf("    X axis: code: %04x, name: %s, range: %"PRId32" - %"PRId32"\n",
-                       x->code, x->name, x->minimum, x->maximum);
-                printf("    Y axis: code: %04x, name: %s, range: %"PRId32" - %"PRId32"\n",
-                       y->code, y->name, y->minimum, y->maximum);
+                printf("%2x: %s\n", h, hat->name);
+                if (verbose) {
+                    printf("    X axis: code: %04x, name: %s, range: %"PRId32" - %"PRId32"\n",
+                           x->code, x->name, x->minimum, x->maximum);
+                    printf("    Y axis: code: %04x, name: %s, range: %"PRId32" - %"PRId32"\n",
+                           y->code, y->name, y->minimum, y->maximum);
+                }
 
             }
         }
@@ -237,11 +249,11 @@ static bool list_hats(void)
 static void list_devices(void)
 {
     for (int i = 0; i < devcount; i++) {
-        if (opt_verbose) {
+        if (verbose) {
             printf("device %d:\n", i);
         }
-        joy_device_dump(devices[i], opt_verbose);
-        if (opt_verbose) {
+        joy_device_dump(devices[i], verbose);
+        if (verbose) {
             putchar('\n');
         }
     }

@@ -23,6 +23,9 @@
 #include "lib.h"
 
 
+extern bool verbose;
+
+
 #define DEVICES_INITIAL_SIZE    16
 #define BUTTONS_INITIAL_SIZE    32
 #define AXES_INITIAL_SIZE       16
@@ -587,19 +590,23 @@ static void joydev_close(joy_device_t *joydev)
 static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
 {
     if (event->type == EV_SYN) {
-        printf("event: time %ld.%06ld: %s\n",
-               event->input_event_sec,
-               event->input_event_usec,
-               libevdev_event_type_get_name(event->type));
+        if (verbose) {
+            printf("event: time %ld.%06ld: %s\n",
+                   event->input_event_sec,
+                   event->input_event_usec,
+                   libevdev_event_type_get_name(event->type));
+        }
     } else {
-        printf("event: time %ld.%06ld, type %d (%s), code %04x (%s), value %d\n",
-               event->input_event_sec,
-               event->input_event_usec,
-               event->type,
-               libevdev_event_type_get_name(event->type),
-               (unsigned int)event->code,
-               libevdev_event_code_get_name(event->type, event->code),
-               event->value);
+        if (verbose) {
+            printf("event: time %ld.%06ld, type %d (%s), code %04x (%s), value %d\n",
+                   event->input_event_sec,
+                   event->input_event_usec,
+                   event->type,
+                   libevdev_event_type_get_name(event->type),
+                   (unsigned int)event->code,
+                   libevdev_event_code_get_name(event->type, event->code),
+                   event->value);
+        }
 
         if (IS_BUTTON(event->code)) {
             joy_button_event(joydev, (uint16_t)event->code, event->value);
@@ -630,19 +637,25 @@ static bool joydev_poll(joy_device_t *joydev)
     evdev = priv->evdev;
     fd    = priv->fd;
     if (evdev == NULL || fd < 0) {
-        printf("evdev or fd invalid\n");
+        fprintf(stderr, "%s(): evdev is NULL or fd invalid\n", __func__);
         return false;
     }
 
     while (libevdev_has_event_pending(evdev)) {
         rc = libevdev_next_event(evdev, flags, &event);
         if (rc == LIBEVDEV_READ_STATUS_SYNC) {
-            printf("=== dropped ===\n");
+            if (verbose) {
+                printf("=== dropped ===\n");
+            }
             while (rc == LIBEVDEV_READ_STATUS_SYNC) {
-                printf("sync");
+                if (verbose) {
+                    printf("sync");
+                }
                 rc = libevdev_next_event(evdev, LIBEVDEV_READ_FLAG_SYNC, &event);
             }
-            printf("=== resynced ===\n");
+            if (verbose) {
+                printf("=== resynced ===\n");
+            }
         } else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
             poll_dispatch_event(joydev, &event);
         }
