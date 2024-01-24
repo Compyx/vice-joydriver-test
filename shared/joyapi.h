@@ -101,7 +101,7 @@ void          joy_device_list_free(joy_device_t  **devices);
 
 joy_device_t *joy_device_new (void);
 void          joy_device_free(joy_device_t *dev);
-void          joy_device_dump(const joy_device_t *dev, bool verbose);
+void          joy_device_dump(const joy_device_t *dev);
 joy_device_t *joy_device_get(joy_device_t **devices, const char *node);
 
 const char   *joy_device_get_button_name(const joy_device_t *joydev, uint16_t code);

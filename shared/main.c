@@ -15,6 +15,9 @@
 #include "joyapi.h"
 
 
+/** \brief  Enable debug message */
+bool         debug = false;
+
 /** \brief  Enable more verbose output */
 bool         verbose = false;
 
@@ -32,6 +35,12 @@ static const cmdline_opt_t options[] = {
         .long_name  = "verbose",
         .target     = &verbose,
         .help       = "enable more verbose output",
+    },
+    {   .type       = CMDLINE_BOOLEAN,
+        .short_name = 'd',
+        .long_name  = "debug",
+        .target     = &debug,
+        .help       = "enable debug messages"
     },
     {   .type       = CMDLINE_BOOLEAN,
         .long_name  = "list-devices",
@@ -249,13 +258,9 @@ static bool list_hats(void)
 static void list_devices(void)
 {
     for (int i = 0; i < devcount; i++) {
-        if (verbose) {
-            printf("device %d:\n", i);
-        }
-        joy_device_dump(devices[i], verbose);
-        if (verbose) {
-            putchar('\n');
-        }
+        msg_verbose("device %d:\n", i);
+        joy_device_dump(devices[i]);
+        msg_verbose("\n");  /* empty line */
     }
 }
 
@@ -299,7 +304,7 @@ static int poll_loop(void)
     }
 
     /* just the first argument for now */
-    joydev = joy_device_get(devices, args[0]);
+    joydev = get_device(args[0]);
     if (joydev == NULL) {
         fprintf(stderr, "%s: error: could not find device %s.\n",
                 cmdline_get_prg_name(), args[0]);

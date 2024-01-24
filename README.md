@@ -57,6 +57,7 @@ a few command line options:
 | `--help`          |              | Show help                                        |
 | `--version`       |              | Show program version                             |
 | `--verbose`       |              | Be verbose (limited support)                     |
+| `--debug`         |              | Enable debugging messages                        |
 | `--list-devices`  |              | Show list of joystick devices discovered         |
 | `--list-axes`     |              | List axes of device(s)                           |
 | `--list-buttons`  |              | List buttons of device(s))                       |

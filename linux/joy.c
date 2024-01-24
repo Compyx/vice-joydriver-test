@@ -23,6 +23,7 @@
 #include "lib.h"
 
 
+extern bool debug;
 extern bool verbose;
 
 
@@ -430,15 +431,13 @@ static joy_device_t *get_device_data(const char *node)
 
     fd = open(node, O_RDONLY|O_NONBLOCK);
     if (fd < 0) {
-        /* can't report error, a lot of nodes in dev/input aren't readable
-         * by the user */
-#if 0
-        fprintf(stderr, "%s(): failed to open %s: %s\n",
-                __func__, node, strerror(errno));
-#endif
+        /* Don't normally report error, a lot of nodes in dev/input aren't
+         * readable by the user */
+        msg_debug("Failed to open %s: %s -- ignoring\n", node, strerror(errno));
         return NULL;
     }
 
+    msg_debug("Calling libevdev_new_from_fd(%d)\n", fd);
     rc = libevdev_new_from_fd(fd, &evdev);
     if (rc < 0) {
         fprintf(stderr, "%s(): failed to initialize libevdev: %s\n",
@@ -446,6 +445,7 @@ static joy_device_t *get_device_data(const char *node)
         close(fd);
         return NULL;
     }
+    msg_debug("OK\n");
 
     joydev = joy_device_new();
     joydev->name    = lib_strdup(libevdev_get_name(evdev));
@@ -590,12 +590,10 @@ static void joydev_close(joy_device_t *joydev)
 static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
 {
     if (event->type == EV_SYN) {
-        if (verbose) {
-            printf("event: time %ld.%06ld: %s\n",
-                   event->input_event_sec,
-                   event->input_event_usec,
-                   libevdev_event_type_get_name(event->type));
-        }
+        msg_verbose("event: time %ld.%06ld: %s\n",
+                    event->input_event_sec,
+                    event->input_event_usec,
+                    libevdev_event_type_get_name(event->type));
     } else {
         if (verbose) {
             printf("event: time %ld.%06ld, type %d (%s), code %04x (%s), value %d\n",

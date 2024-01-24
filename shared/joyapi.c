@@ -20,6 +20,13 @@
 #include "joyapi.h"
 
 
+extern bool debug;
+extern bool verbose;
+
+
+#define null_str(s) ((s) != NULL ? (s) : "(null)")
+
+
 /** \brief  Arch-specific callbacks for the joystick system
  *
  * Must be set by the arch-specific code by calling \c joy_driver_register().
@@ -46,8 +53,10 @@ void joy_driver_register(const joy_driver_t *drv)
  */
 void joy_device_list_free(joy_device_t **devices)
 {
+    msg_debug("Called\n");
     if (devices != NULL) {
         for (size_t i = 0; devices[i] != NULL; i++) {
+            msg_debug("Freeing device %zu: %s\n", i, devices[i]->name);
             joy_device_free(devices[i]);
         }
         lib_free(devices);
@@ -134,14 +143,12 @@ void joy_device_free(joy_device_t *joydev)
 }
 
 
-#define null_str(s) ((s) != NULL ? (s) : "(null)")
 
 /** \brief  Print information on joystick device on stdout
  *
  * \param[in]   joydev  joystick device
- * \param[in]   verbose be verbose
  */
-void joy_device_dump(const joy_device_t *joydev, bool verbose)
+void joy_device_dump(const joy_device_t *joydev)
 {
     if (verbose) {
         printf("name   : %s\n",          null_str(joydev->name));
@@ -241,8 +248,6 @@ const char *joy_device_get_hat_name(const joy_device_t *joydev, uint16_t hat)
 }
 
 
-
-
 /** \brief  Initialize joystick axis object to default values
  *
  * \param[in]   axis    joystick axis object
@@ -339,6 +344,10 @@ void joy_hat_event(const joy_device_t *joydev, uint16_t hat, int32_t value)
  */
 bool joy_open(joy_device_t *joydev)
 {
+    bool result;
+
+    msg_debug("Called\n");
+
     if (joydev == NULL) {
         fprintf(stderr, "%s(): error: `joydev` is null.\n", __func__);
         return false;
@@ -347,7 +356,12 @@ bool joy_open(joy_device_t *joydev)
         fprintf(stderr, "%s(): error: no open() callback registered.\n", __func__);
         return false;
     }
-    return driver.open(joydev);
+
+    msg_debug("Calling driver.open()\n");
+    result = driver.open(joydev);
+    msg_debug("%s\n", result ? "OK" : "failed");
+
+    return result;
 }
 
 
@@ -357,11 +371,13 @@ bool joy_open(joy_device_t *joydev)
  */
 void joy_close(joy_device_t *joydev)
 {
+    msg_debug("Called\n");
     if (joydev == NULL) {
         fprintf(stderr, "%s(): error: `joydev` is null.\n", __func__);
     } else if (driver.close == NULL) {
         fprintf(stderr, "%s(): error: no close() callback registered.\n", __func__);
     } else {
+        msg_debug("Calling driver.close()\n");
         driver.close(joydev);
     }
 }
@@ -375,6 +391,7 @@ void joy_close(joy_device_t *joydev)
  */
 bool joy_poll(joy_device_t *joydev)
 {
+    msg_debug("Called\n");
     if (joydev == NULL) {
         fprintf(stderr, "%s(): error: `joydev` is null.\n", __func__);
         return false;

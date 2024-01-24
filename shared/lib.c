@@ -12,6 +12,9 @@
 #include "lib.h"
 
 
+extern bool verbose;
+
+
 void *lib_malloc(size_t size)
 {
     void *ptr = malloc(size);

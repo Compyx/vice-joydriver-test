@@ -9,8 +9,23 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdarg.h>
+
+extern bool debug;
+extern bool verbose;
 
 #define ARRAY_LEN(arr)  (sizeof arr / sizeof arr[0])
+
+#define msg_verbose(...) \
+    if (verbose) { \
+        printf(__VA_ARGS__); \
+    }
+
+#define msg_debug(...) \
+    if (debug) { \
+        printf("[DBG: %s:%d:%s()] ", __FILE__, __LINE__, __func__); \
+        printf(__VA_ARGS__); \
+    }
 
 void *lib_malloc(size_t size);
 void *lib_realloc(void *ptr, size_t size);
