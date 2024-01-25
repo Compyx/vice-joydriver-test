@@ -587,6 +587,44 @@ static void joydev_close(joy_device_t *joydev)
 }
 
 
+static int hat_to_joy_direction(int code, int value)
+{
+    int direction = 0;
+
+    /* This currently assumes hats are reported with values of -1, 0 or 1,
+     * which appears to be true for the controllers I have. */
+
+    switch (code) {
+        case ABS_HAT0X:
+        case ABS_HAT1X:
+        case ABS_HAT2X:
+        case ABS_HAT3X:
+            if (value < 0) {
+                direction = JOYSTICK_DIRECTION_LEFT;
+            } else if (value == 0) {
+                direction = JOYSTICK_DIRECTION_NONE;
+            } else {
+                direction = JOYSTICK_DIRECTION_RIGHT;
+            }
+            break;
+        case ABS_HAT0Y:
+        case ABS_HAT1Y:
+        case ABS_HAT2Y:
+        case ABS_HAT3Y:
+            if (value < 0) {
+                direction = JOYSTICK_DIRECTION_UP;
+            } else if (value == 0) {
+                direction = JOYSTICK_DIRECTION_NONE;
+            } else {
+                direction = JOYSTICK_DIRECTION_DOWN;
+            }
+            break;
+        default:
+            break;
+    }
+    return direction;
+}
+
 static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
 {
     if (event->type == EV_SYN) {
@@ -607,11 +645,17 @@ static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
         }
 
         if (IS_BUTTON(event->code)) {
-            joy_button_event(joydev, (uint16_t)event->code, event->value);
+            joy_button_event(joydev,
+                             (uint16_t)event->code,
+                             event->value);
         } else if (IS_AXIS(event->code)) {
-            joy_axis_event  (joydev, (uint16_t)event->code, event->value);
+            joy_axis_event(joydev,
+                           (uint16_t)event->code,
+                           event->value);
         } else if (IS_HAT(event->code)) {
-            joy_hat_event   (joydev, (uint16_t)event->code, event->value);
+            joy_hat_event(joydev,
+                          (uint16_t)event->code,
+                          hat_to_joy_direction(event->code, event->value));
         }
     }
 }

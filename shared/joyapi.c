@@ -27,6 +27,26 @@ extern bool verbose;
 #define null_str(s) ((s) != NULL ? (s) : "(null)")
 
 
+static const char *joy_direction_names[16] = {
+    "None",         /* 0x00: - */
+    "North",        /* 0x01: Up */
+    "South",        /* 0x02: Down */
+    "(invalid)",    /* 0x03: Up + Down */
+    "West",         /* 0x04: Left */
+    "Northwest",    /* 0x05: Up + Left */
+    "Southwest",    /* 0x06: Down + Left*/
+    "(invalid)",    /* 0x07: Up + Down + Left */
+    "East",         /* 0x08: Right */
+    "Northeast",    /* 0x09: Up + Right */
+    "Southeast",    /* 0x0a: Down + Right */
+    "(invalid)",    /* 0x0b: Up + Down + Right */
+    "(invalid)",    /* 0x0c: Left + Right */
+    "(invalid)",    /* 0x0d: Up + Left + Right */
+    "(invalid)",    /* 0x0e: Down + Left + Right */
+    "(invalid)",    /* 0x0f: Up + Down + Left + Right */
+};
+
+
 /** \brief  Arch-specific callbacks for the joystick system
  *
  * Must be set by the arch-specific code by calling \c joy_driver_register().
@@ -248,6 +268,12 @@ const char *joy_device_get_hat_name(const joy_device_t *joydev, uint16_t hat)
 }
 
 
+static inline const char *joy_direction_name(uint32_t mask)
+{
+    return joy_direction_names[mask & 0x0f];
+}
+
+
 /** \brief  Initialize joystick axis object to default values
  *
  * \param[in]   axis    joystick axis object
@@ -331,8 +357,9 @@ void joy_button_event(const joy_device_t *joydev, uint16_t button, int32_t value
  */
 void joy_hat_event(const joy_device_t *joydev, uint16_t hat, int32_t value)
 {
-    printf("hat event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
-           joydev->name, joy_device_get_hat_name(joydev, hat), hat, value);
+    printf("hat event: %s: %s (%"PRIx16"), value: %"PRId32": %s\n",
+           joydev->name, joy_device_get_hat_name(joydev, hat), hat, value,
+           joy_direction_name((uint32_t)value));
 }
 
 

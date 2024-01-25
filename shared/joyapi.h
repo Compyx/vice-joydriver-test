@@ -22,6 +22,14 @@ typedef enum {
     JOY_HAT_NORTHWEST
 } joy_hat_direction_t;
 
+
+#define JOYSTICK_DIRECTION_NONE     0
+#define JOYSTICK_DIRECTION_UP       1
+#define JOYSTICK_DIRECTION_DOWN     2
+#define JOYSTICK_DIRECTION_LEFT     4
+#define JOYSTICK_DIRECTION_RIGHT    8
+
+
 #define JOY_HAT_NUM_DIRECTIONS  (JOY_HAT_NORTHWEST + 1)
 
 
