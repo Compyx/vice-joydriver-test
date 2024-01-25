@@ -268,10 +268,7 @@ const char *joy_device_get_hat_name(const joy_device_t *joydev, uint16_t hat)
 }
 
 
-static inline const char *joy_direction_name(uint32_t mask)
-{
-    return joy_direction_names[mask & 0x0f];
-}
+#define joy_direction_name(mask) (joy_direction_names[mask & 0x0f])
 
 
 /** \brief  Initialize joystick axis object to default values
@@ -318,6 +315,14 @@ void joy_hat_init(joy_hat_t *hat)
 }
 
 
+
+static void joy_perform_event(int32_t direction, int32_t value)
+{
+    printf("%s(): direction %s -> %d\n",
+           __func__, joy_direction_name(direction), value);
+}
+
+
 /* TODO: The following can probably be merged into a single `joy_event()` with
  *       an event-type argument.
  */
@@ -357,9 +362,33 @@ void joy_button_event(const joy_device_t *joydev, uint16_t button, int32_t value
  */
 void joy_hat_event(const joy_device_t *joydev, uint16_t hat, int32_t value)
 {
+    static int32_t prev = 0;
+    int32_t directions[4] = { JOYSTICK_DIRECTION_UP,
+                              JOYSTICK_DIRECTION_DOWN,
+                              JOYSTICK_DIRECTION_LEFT,
+                              JOYSTICK_DIRECTION_RIGHT };
+    int d;
+
     printf("hat event: %s: %s (%"PRIx16"), value: %"PRId32": %s\n",
            joydev->name, joy_device_get_hat_name(joydev, hat), hat, value,
            joy_direction_name((uint32_t)value));
+
+    if (value != prev) {
+        /* release directions first if needed */
+        for (d = 0; d < 4; d++) {
+            if (prev & directions[d] && !(value & directions[d])) {
+                joy_perform_event(directions[d], 0);
+            }
+        }
+        /* press new direction if needed */
+        for (d = 0; d < 4; d++) {
+            if (!(prev & directions[d]) && value & directions[d]) {
+                joy_perform_event(directions[d], 1);
+            }
+        }
+    }
+
+    prev = value;
 }
 
 
