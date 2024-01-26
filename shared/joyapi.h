@@ -76,6 +76,7 @@ typedef enum {
 typedef struct joy_button_s {
     uint16_t       code;        /**< event code */
     char          *name;        /**< name */
+    int32_t        prev;        /**< previous value */
     joy_mapping_t  mapping;     /**< input mapping */
 } joy_button_t;
 
@@ -83,6 +84,7 @@ typedef struct joy_button_s {
 typedef struct joy_axis_s {
     uint16_t       code;        /**< event code */
     char          *name;        /**< name */
+    int32_t        prev;        /**< previous value */
     int32_t        minimum;     /**< minimum value */
     int32_t        maximum;     /**< maximum value */
     int32_t        fuzz;        /**< noise removed by dev driver (Linux) */
@@ -99,6 +101,7 @@ typedef struct joy_axis_s {
 typedef struct joy_hat_s {
     uint16_t             code;      /**< code in case of USB hat switch (BSD) */
     char                *name;      /**< name */
+    int32_t              prev;      /**< previous value */
     joy_axis_t           x;         /**< X axis */
     joy_axis_t           y;         /**< Y axis */
     joy_hat_direction_t  hat_map[JOY_HAT_NUM_DIRECTIONS];   /* hat mapping */
