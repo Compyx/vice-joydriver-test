@@ -107,6 +107,8 @@ joy_device_t *joy_device_new(void)
     dev->axes        = NULL;
     dev->hats        = NULL;
 
+    dev->port        = -1;  /* unassigned */
+
     dev->priv        = NULL;
 
     return dev;

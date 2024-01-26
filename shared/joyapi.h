@@ -124,6 +124,8 @@ typedef struct joy_device_s {
     joy_axis_t   *axes;             /**< list of axes */
     joy_hat_t    *hats;             /**< list of hats */
 
+    int           port;             /**< port number (0-based, -1 = unassigned) */
+
     void         *priv;             /**< used for driver/arch-specific data */
 } joy_device_t;
 
