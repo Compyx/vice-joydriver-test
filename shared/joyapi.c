@@ -310,7 +310,7 @@ void joy_button_init(joy_button_t *button)
 
 joy_axis_t *joy_axis_from_code(joy_device_t *joydev, uint16_t code)
 {
-    for (size_t a = 0; a < joydev->num_axes; a++) {
+    for (uint32_t a = 0; a < joydev->num_axes; a++) {
         if (joydev->axes[a].code == code) {
             return &(joydev->axes[a]);
         }
@@ -320,7 +320,7 @@ joy_axis_t *joy_axis_from_code(joy_device_t *joydev, uint16_t code)
 
 joy_button_t *joy_button_from_code(joy_device_t *joydev, uint16_t code)
 {
-    for (size_t b = 0; b < joydev->num_buttons; b++) {
+    for (uint32_t b = 0; b < joydev->num_buttons; b++) {
         if (joydev->buttons[b].code == code) {
             return &(joydev->buttons[b]);
         }
@@ -330,7 +330,7 @@ joy_button_t *joy_button_from_code(joy_device_t *joydev, uint16_t code)
 
 joy_hat_t *joy_hat_from_code(joy_device_t *joydev, uint16_t code)
 {
-    for (size_t h = 0; h < joydev->num_hats; h++) {
+    for (uint32_t h = 0; h < joydev->num_hats; h++) {
         if (joydev->hats[h].code == code) {
             return &(joydev->hats[h]);
         }
