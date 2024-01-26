@@ -271,6 +271,16 @@ const char *joy_device_get_hat_name(const joy_device_t *joydev, uint16_t hat)
 #define joy_direction_name(mask) (joy_direction_names[mask & 0x0f])
 
 
+/** \brief  Initialize joystick mapping object to default values
+ *
+ * \param[in]   mapping joystick mapping
+ */
+void joy_mapping_init(joy_mapping_t *mapping)
+{
+    mapping->action = JOY_ACTION_NONE;
+}
+
+
 /** \brief  Initialize joystick axis object to default values
  *
  * \param[in]   axis    joystick axis object
@@ -309,7 +319,7 @@ void joy_hat_init(joy_hat_t *hat)
     hat->code = 0;
     joy_axis_init(&(hat->x));
     joy_axis_init(&(hat->y));
-    for (size_t i = 0; i < sizeof hat->hat_map; i++) {
+    for (size_t i = 0; i < ARRAY_LEN(hat->hat_map); i++) {
         hat->hat_map[i] = JOY_HAT_NEUTRAL;
     }
 }

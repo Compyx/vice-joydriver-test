@@ -10,6 +10,45 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/*
+ * Joystick mapping structs and enums
+ */
+
+/** \brief  Types of mapping actions  */
+typedef enum joy_action_s {
+    JOY_ACTION_NONE,            /**< no mapping (ignore input) */
+    JOY_ACTION_JOYSTICK,        /**< joystick pin */
+    JOY_ACTION_KEYBOARD,        /**< key stroke */
+    JOY_ACTION_POT_AXIS,        /**< pot axis */
+    JOY_ACTION_UI_ACTION,       /**< trigger UI action */
+    JOY_ACTION_UI_ACTIVATE      /**< activate menu (SDL) or settings dialog (Gtk3) */
+} joy_action_t;
+
+/** \brief  Mapping of host input to emulated keyboard */
+typedef struct joy_key_map_s {
+    int          row;           /**< keyboard matrix row */
+    int          column;        /**< keyboard matrix column */
+    unsigned int flags;         /**< flags */
+} joy_key_map_t;
+
+/** \brief  Pot meter axes */
+typedef enum joy_pot_axis_s {
+    JOY_POT_AXIS_X = 1,     /**< pot X-axis */
+    JOY_POT_AXIS_Y = 2      /**< pot Y-axis */
+} joy_pot_axis_t;
+
+/** \brief  Mapping of host input to emulator input or action */
+typedef struct joy_mapping_s {
+    joy_action_t       action;
+    union {
+        int            pin;         /* JOY_ACTION_JOYSTICK */
+        joy_pot_axis_t pot;         /* JOY_ACTION_POT_AXIS */
+        joy_key_map_t  key;         /* JOY_ACTION_KEYBOARD */
+        int            ui_action;   /* JOY_ACTION_UI_ACTION */
+    } value;
+} joy_mapping_t;
+
+
 typedef enum {
     JOY_HAT_NEUTRAL = 0,
     JOY_HAT_NORTH,
@@ -35,20 +74,22 @@ typedef enum {
 
 /** \brief  Joystick button object */
 typedef struct joy_button_s {
-    uint16_t  code;     /**< event code */
-    char     *name;     /**< name */
+    uint16_t       code;        /**< event code */
+    char          *name;        /**< name */
+    joy_mapping_t  mapping;     /**< input mapping */
 } joy_button_t;
 
 /** \brief  Joystick axis object */
 typedef struct joy_axis_s {
-    uint16_t  code;             /**< event code */
-    char     *name;             /**< name */
-    int32_t   minimum;          /**< minimum value */
-    int32_t   maximum;          /**< maximum value */
-    int32_t   fuzz;             /**< noise removed by dev driver (Linux) */
-    int32_t   flat;             /**< flat (Linux only) */
-    int32_t   resolution;       /**< resolution of axis (units per mm) */
-    uint32_t  granularity;      /**< granularity of reported values (Windows) */
+    uint16_t       code;        /**< event code */
+    char          *name;        /**< name */
+    int32_t        minimum;     /**< minimum value */
+    int32_t        maximum;     /**< maximum value */
+    int32_t        fuzz;        /**< noise removed by dev driver (Linux) */
+    int32_t        flat;        /**< flat (Linux only) */
+    int32_t        resolution;  /**< resolution of axis (units per mm) */
+    uint32_t       granularity; /**< granularity of reported values (Windows) */
+    joy_mapping_t  mapping;     /**< input mapping */
 } joy_axis_t;
 
 /** \brief  Joystick hat object
@@ -56,11 +97,12 @@ typedef struct joy_axis_s {
  * If \c code > 0 we use the hat map instead of the axes.
  */
 typedef struct joy_hat_s {
-    uint16_t             code;  /**< code in case of USB hat switch (BSD) */
-    char                *name;  /**< name */
-    joy_axis_t           x;     /**< X axis */
-    joy_axis_t           y;     /**< Y axis */
+    uint16_t             code;      /**< code in case of USB hat switch (BSD) */
+    char                *name;      /**< name */
+    joy_axis_t           x;         /**< X axis */
+    joy_axis_t           y;         /**< Y axis */
     joy_hat_direction_t  hat_map[JOY_HAT_NUM_DIRECTIONS];   /* hat mapping */
+    joy_mapping_t        mapping;   /**< mapping */
 } joy_hat_t;
 
 /** \brief  Joystick device object */
@@ -92,6 +134,7 @@ typedef struct joy_driver_s {
 } joy_driver_t;
 
 
+
 /*
  * Prototypes mark 'arch' are expected to be implemented for the arch using
  * arch-specific code.
@@ -116,9 +159,10 @@ const char   *joy_device_get_button_name(const joy_device_t *joydev, uint16_t co
 const char   *joy_device_get_axis_name  (const joy_device_t *joydev, uint16_t code);
 const char   *joy_device_get_hat_name   (const joy_device_t *joydev, uint16_t code);
 
-void          joy_axis_init  (joy_axis_t   *axis);
-void          joy_button_init(joy_button_t *button);
-void          joy_hat_init   (joy_hat_t    *hat);
+void          joy_mapping_init(joy_mapping_t *mapping);
+void          joy_axis_init   (joy_axis_t   *axis);
+void          joy_button_init (joy_button_t *button);
+void          joy_hat_init    (joy_hat_t    *hat);
 
 
 void          joy_axis_event  (const joy_device_t *joydev, uint16_t code, int32_t value);

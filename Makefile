@@ -50,8 +50,10 @@ OBJS = main.o cmdline.o lib.o joy.o joyapi.o
 
 all: $(PROG)
 
-cmdline.o: lib.o
+cmdline.o: lib.o cmdline.h
+lib.o: lib.h
 joy.o: lib.o joyapi.o
+joyapi.o: joyapi.h
 main.o: cmdline.o joy.o joyapi.o lib.o
 
 $(PROG): $(OBJS)
