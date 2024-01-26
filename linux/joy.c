@@ -646,15 +646,15 @@ static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
 
         if (IS_BUTTON(event->code)) {
             joy_button_event(joydev,
-                             (uint16_t)event->code,
+                             joy_button_from_code(joydev, event->code),
                              event->value);
         } else if (IS_AXIS(event->code)) {
             joy_axis_event(joydev,
-                           (uint16_t)event->code,
+                           joy_axis_from_code(joydev, event->code),
                            event->value);
         } else if (IS_HAT(event->code)) {
             joy_hat_event(joydev,
-                          (uint16_t)event->code,
+                          joy_hat_from_code(joydev, event->code),
                           hat_to_joy_direction(event->code, event->value));
         }
     }

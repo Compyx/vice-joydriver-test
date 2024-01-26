@@ -160,14 +160,17 @@ const char   *joy_device_get_axis_name  (const joy_device_t *joydev, uint16_t co
 const char   *joy_device_get_hat_name   (const joy_device_t *joydev, uint16_t code);
 
 void          joy_mapping_init(joy_mapping_t *mapping);
-void          joy_axis_init   (joy_axis_t   *axis);
-void          joy_button_init (joy_button_t *button);
-void          joy_hat_init    (joy_hat_t    *hat);
+void          joy_axis_init   (joy_axis_t    *axis);
+void          joy_button_init (joy_button_t  *button);
+void          joy_hat_init    (joy_hat_t     *hat);
 
+joy_axis_t   *joy_axis_from_code  (joy_device_t *joydev, uint16_t code);
+joy_button_t *joy_button_from_code(joy_device_t *joydev, uint16_t code);
+joy_hat_t    *joy_hat_from_code   (joy_device_t *joydev, uint16_t code);
 
-void          joy_axis_event  (const joy_device_t *joydev, uint16_t code, int32_t value);
-void          joy_button_event(const joy_device_t *joydev, uint16_t code, int32_t value);
-void          joy_hat_event   (const joy_device_t *joydev, uint16_t code, int32_t value);
+void          joy_axis_event  (const joy_device_t *joydev, joy_axis_t   *axis,   int32_t value);
+void          joy_button_event(const joy_device_t *joydev, joy_button_t *button, int32_t value);
+void          joy_hat_event   (const joy_device_t *joydev, joy_hat_t    *hat,    int32_t value);
 
 bool          joy_open (joy_device_t *joydev);
 bool          joy_poll (joy_device_t *joydev);

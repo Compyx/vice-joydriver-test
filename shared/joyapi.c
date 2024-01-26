@@ -308,6 +308,36 @@ void joy_button_init(joy_button_t *button)
     button->name = NULL;
 }
 
+joy_axis_t *joy_axis_from_code(joy_device_t *joydev, uint16_t code)
+{
+    for (size_t a = 0; a < joydev->num_axes; a++) {
+        if (joydev->axes[a].code == code) {
+            return &(joydev->axes[a]);
+        }
+    }
+    return NULL;
+}
+
+joy_button_t *joy_button_from_code(joy_device_t *joydev, uint16_t code)
+{
+    for (size_t b = 0; b < joydev->num_buttons; b++) {
+        if (joydev->buttons[b].code == code) {
+            return &(joydev->buttons[b]);
+        }
+    }
+    return NULL;
+}
+
+joy_hat_t *joy_hat_from_code(joy_device_t *joydev, uint16_t code)
+{
+    for (size_t h = 0; h < joydev->num_hats; h++) {
+        if (joydev->hats[h].code == code) {
+            return &(joydev->hats[h]);
+        }
+    }
+    return NULL;
+}
+
 
 /** \brief  Initialize joystick hat object to default values
  *
@@ -340,26 +370,36 @@ static void joy_perform_event(int32_t direction, int32_t value)
 /** \brief  Joystick axis event
  *
  * \param[in]   joydev  joystick device triggering the event
- * \param[in]   axis    axis code
+ * \param[in]   axis    axis object
  * \param[in]   value   axis value
  */
-void joy_axis_event(const joy_device_t *joydev, uint16_t axis, int32_t value)
+void joy_axis_event(const joy_device_t *joydev, joy_axis_t *axis, int32_t value)
 {
+    if (axis == NULL) {
+        fprintf(stderr, "%s(): error: `axis` is NULL\n", __func__);
+        return;
+    }
+
     printf("axis event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
-           joydev->name, joy_device_get_axis_name(joydev, axis), axis, value);
+           joydev->name, axis->name, axis->code, value);
 }
 
 
 /** \brief  Joystick button event
  *
  * \param[in]   joydev  joystick device triggering the event
- * \param[in]   button  button code
+ * \param[in]   button  button object
  * \param[in]   value   button value
  */
-void joy_button_event(const joy_device_t *joydev, uint16_t button, int32_t value)
+void joy_button_event(const joy_device_t *joydev, joy_button_t *button, int32_t value)
 {
+    if (button == NULL) {
+        fprintf(stderr, "%s(): error: `button` is NULL\n", __func__);
+        return;
+    }
+
     printf("button event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
-           joydev->name, joy_device_get_button_name(joydev, button), button, value);
+           joydev->name, button->name, button->code, value);
 
 }
 
@@ -367,10 +407,10 @@ void joy_button_event(const joy_device_t *joydev, uint16_t button, int32_t value
 /** \brief  Joystick hat event
  *
  * \param[in]   joydev  joystick device triggering the event
- * \param[in]   hat     hat code
+ * \param[in]   hat     hat object
  * \param[in]   value   hat value
  */
-void joy_hat_event(const joy_device_t *joydev, uint16_t hat, int32_t value)
+void joy_hat_event(const joy_device_t *joydev, joy_hat_t *hat, int32_t value)
 {
     static int32_t prev = 0;
     int32_t directions[4] = { JOYSTICK_DIRECTION_UP,
@@ -379,8 +419,13 @@ void joy_hat_event(const joy_device_t *joydev, uint16_t hat, int32_t value)
                               JOYSTICK_DIRECTION_RIGHT };
     int d;
 
+    if (hat == NULL) {
+        fprintf(stderr, "%s(): error: `hat` is NULL\n", __func__);
+        return;
+    }
+
     printf("hat event: %s: %s (%"PRIx16"), value: %"PRId32": %s\n",
-           joydev->name, joy_device_get_hat_name(joydev, hat), hat, value,
+           joydev->name, hat->name, hat->code, value,
            joy_direction_name((uint32_t)value));
 
     if (value != prev) {
