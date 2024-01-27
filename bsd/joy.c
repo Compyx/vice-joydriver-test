@@ -472,14 +472,18 @@ static bool joydev_poll(joy_device_t *joydev)
                             printf("%s(): axis %d: %d\n",
                                    __func__, usage, value);
 #endif
-                            joy_axis_event(joydev, (uint16_t)usage, value);
+                            joy_axis_event(joydev,
+                                           joy_axis_from_code(joydev, (uint16_t)usage),
+                                           value);
                             break;
                         case HUG_HAT_SWITCH:
 #if 0
                             printf("%s(): hat switch: %d\n",
                                    __func__, value);
 #endif
-                            joy_hat_event(joydev, (uint16_t)usage, value);
+                            joy_hat_event(joydev,
+                                          joy_hat_from_code(joydev, (uint16_t)usage),
+                                          value);
                             break;
                         case HUG_D_PAD_UP:      /* fall through */
                         case HUG_D_PAD_DOWN:    /* fall through */
@@ -490,7 +494,9 @@ static bool joydev_poll(joy_device_t *joydev)
                             printf("%s(): D-Pad %d: %d\n",
                                    __func__, usage, value);
 #endif
-                            joy_button_event(joydev, (uint16_t)usage, value);
+                            joy_button_event(joydev,
+                                             joy_button_from_code(joydev, (uint16_t)usage),
+                                             value);
                             break;
                         default:
                             break;
@@ -501,7 +507,9 @@ static bool joydev_poll(joy_device_t *joydev)
                     printf("%s(): button %d: %d\n",
                            __func__, usage, value);
 #endif
-                    joy_button_event(joydev, (uint16_t)usage, value);
+                    joy_button_event(joydev,
+                                     joy_button_from_code(joydev, (uint16_t)usage),
+                                     value);
                     break;
                 default:
                     break;
