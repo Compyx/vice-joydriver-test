@@ -33,8 +33,8 @@ typedef struct joy_key_map_s {
 
 /** \brief  Pot meter axes */
 typedef enum joy_pot_axis_s {
-    JOY_POT_AXIS_X = 1,     /**< pot X-axis */
-    JOY_POT_AXIS_Y = 2      /**< pot Y-axis */
+    JOY_POTX,       /**< POTX register */
+    JOY_POTY        /**< POTY register */
 } joy_pot_axis_t;
 
 /** \brief  Mapping of host input to emulator input or action */
@@ -45,7 +45,7 @@ typedef struct joy_mapping_s {
         joy_pot_axis_t pot;         /* JOY_ACTION_POT_AXIS */
         joy_key_map_t  key;         /* JOY_ACTION_KEYBOARD */
         int            ui_action;   /* JOY_ACTION_UI_ACTION */
-    } value;
+    } data;
 } joy_mapping_t;
 
 
@@ -173,9 +173,9 @@ joy_axis_t   *joy_axis_from_code  (joy_device_t *joydev, uint16_t code);
 joy_button_t *joy_button_from_code(joy_device_t *joydev, uint16_t code);
 joy_hat_t    *joy_hat_from_code   (joy_device_t *joydev, uint16_t code);
 
-void          joy_axis_event  (const joy_device_t *joydev, joy_axis_t   *axis,   int32_t value);
-void          joy_button_event(const joy_device_t *joydev, joy_button_t *button, int32_t value);
-void          joy_hat_event   (const joy_device_t *joydev, joy_hat_t    *hat,    int32_t value);
+void          joy_axis_event  (joy_device_t *joydev, joy_axis_t   *axis,   int32_t value);
+void          joy_button_event(joy_device_t *joydev, joy_button_t *button, int32_t value);
+void          joy_hat_event   (joy_device_t *joydev, joy_hat_t    *hat,    int32_t value);
 
 bool          joy_open (joy_device_t *joydev);
 bool          joy_poll (joy_device_t *joydev);

@@ -280,6 +280,7 @@ const char *joy_device_get_hat_name(const joy_device_t *joydev, uint16_t hat)
 void joy_mapping_init(joy_mapping_t *mapping)
 {
     mapping->action = JOY_ACTION_NONE;
+    memset(&(mapping->data), 0, sizeof mapping->data);
 }
 
 
@@ -298,6 +299,7 @@ void joy_axis_init(joy_axis_t *axis)
     axis->flat        = 0;
     axis->resolution  = 1;
     axis->granularity = 1;
+    joy_mapping_init(&(axis->mapping));
 }
 
 
@@ -310,6 +312,7 @@ void joy_button_init(joy_button_t *button)
     button->code = 0;
     button->name = NULL;
     button->prev = 0;
+    joy_mapping_init(&(button->mapping));
 }
 
 
@@ -327,6 +330,7 @@ void joy_hat_init(joy_hat_t *hat)
     for (size_t i = 0; i < ARRAY_LEN(hat->hat_map); i++) {
         hat->hat_map[i] = JOY_HAT_NEUTRAL;
     }
+    joy_mapping_init(&(hat->mapping));
 }
 
 
@@ -365,16 +369,47 @@ joy_hat_t *joy_hat_from_code(joy_device_t *joydev, uint16_t code)
 
 
 
-static void joy_perform_event(int32_t direction, int32_t value)
+/** \brief  Perform joystick event
+ *
+ * \param[in]   joydev  joystick device
+ * \param[in]   event   event data
+ * \param[in]   value   event value
+ */
+static void joy_perform_event(joy_device_t  *joydev,
+                              joy_mapping_t *event,
+                              int32_t        value)
 {
-    printf("%s(): direction %s -> %d\n",
-           __func__, joy_direction_name(direction), value);
+    joy_key_map_t *key;
+
+    switch (event->action) {
+        case JOY_ACTION_NONE:
+            printf("event: port %d - NONE - value: %"PRId32"\n",
+                   joydev->port, value);
+            break;
+        case JOY_ACTION_JOYSTICK:
+            printf("event: port %d - JOYSTICK - pin: %d, value: %"PRId32"\n",
+                   joydev->port, event->data.pin, value);
+            break;
+        case JOY_ACTION_KEYBOARD:
+            key = &(event->data.key);
+            printf("event: port %d - KEYBOARD - row: %d, column: %d, flags: %02"PRIx32", value: %"PRId32"\n",
+                   joydev->port, key->row, key->column, key->flags, value);
+            break;
+        case JOY_ACTION_POT_AXIS:
+            printf("event: port %d: - POT %c - value: %02"PRIx32"\n",
+                   joydev->port, event->data.pot == JOY_POTX ? 'X' : 'Y', value);
+            break;
+        case JOY_ACTION_UI_ACTION:
+            printf("event: UI ACTION: id: %"PRId32"\n", value);
+            break;
+        case JOY_ACTION_UI_ACTIVATE:
+            printf("event: UI ACTIVATE\n");
+            break;
+        default:
+            break;
+    }
 }
 
-
-/* TODO: The following can probably be merged into a single `joy_event()` with
- *       an event-type argument.
- */
 
 /** \brief  Joystick axis event
  *
@@ -382,7 +417,7 @@ static void joy_perform_event(int32_t direction, int32_t value)
  * \param[in]   axis    axis object
  * \param[in]   value   axis value
  */
-void joy_axis_event(const joy_device_t *joydev, joy_axis_t *axis, int32_t value)
+void joy_axis_event(joy_device_t *joydev, joy_axis_t *axis, int32_t value)
 {
     if (axis == NULL) {
         fprintf(stderr, "%s(): error: `axis` is NULL\n", __func__);
@@ -400,7 +435,7 @@ void joy_axis_event(const joy_device_t *joydev, joy_axis_t *axis, int32_t value)
  * \param[in]   button  button object
  * \param[in]   value   button value
  */
-void joy_button_event(const joy_device_t *joydev, joy_button_t *button, int32_t value)
+void joy_button_event(joy_device_t *joydev, joy_button_t *button, int32_t value)
 {
     if (button == NULL) {
         fprintf(stderr, "%s(): error: `button` is NULL\n", __func__);
@@ -409,6 +444,8 @@ void joy_button_event(const joy_device_t *joydev, joy_button_t *button, int32_t 
 
     printf("button event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
            joydev->name, button->name, button->code, value);
+
+    joy_perform_event(joydev, &(button->mapping), value);
 
 }
 
@@ -419,15 +456,8 @@ void joy_button_event(const joy_device_t *joydev, joy_button_t *button, int32_t 
  * \param[in]   hat     hat object
  * \param[in]   value   hat value
  */
-void joy_hat_event(const joy_device_t *joydev, joy_hat_t *hat, int32_t value)
+void joy_hat_event(joy_device_t *joydev, joy_hat_t *hat, int32_t value)
 {
-    static int32_t prev = 0;
-    int32_t directions[4] = { JOYSTICK_DIRECTION_UP,
-                              JOYSTICK_DIRECTION_DOWN,
-                              JOYSTICK_DIRECTION_LEFT,
-                              JOYSTICK_DIRECTION_RIGHT };
-    int d;
-
     if (hat == NULL) {
         fprintf(stderr, "%s(): error: `hat` is NULL\n", __func__);
         return;
@@ -437,22 +467,9 @@ void joy_hat_event(const joy_device_t *joydev, joy_hat_t *hat, int32_t value)
            joydev->name, hat->name, hat->code, value,
            joy_direction_name((uint32_t)value));
 
-    if (value != prev) {
-        /* release directions first if needed */
-        for (d = 0; d < 4; d++) {
-            if (prev & directions[d] && !(value & directions[d])) {
-                joy_perform_event(directions[d], 0);
-            }
-        }
-        /* press new direction if needed */
-        for (d = 0; d < 4; d++) {
-            if (!(prev & directions[d]) && value & directions[d]) {
-                joy_perform_event(directions[d], 1);
-            }
-        }
-    }
+    /* TODO: latch/unlatch pins */
 
-    prev = value;
+    joy_perform_event(joydev, &(hat->mapping), value);
 }
 
 
