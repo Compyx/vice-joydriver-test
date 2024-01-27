@@ -422,7 +422,10 @@ static bool joydev_poll(joy_device_t *joydev)
     }
 
     for (uint32_t b = 0; b < joydev->num_buttons; b++) {
-        joy_button_event(joydev, (uint16_t)b, jstate.rgbButtons[b] & 0x80);
+        /* no need to look up button via code, just use index */
+        joy_button_event(joydev,
+                         &(joydev->buttons[b]),
+                         jstate.rgbButtons[b] & 0x80);
     }
 
     return true;
