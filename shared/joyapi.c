@@ -582,4 +582,25 @@ void joy_device_set_capabilities(joy_device_t *joydev)
 }
 
 
+int joy_device_list_init(joy_device_t ***devices)
+{
+    int count;
 
+    *devices = NULL;
+    count = joy_arch_device_list_init(devices);
+    if (count <= 0) {
+        return count;
+    }
+    for (int i = 0; i < count; i++) {
+        joy_device_set_capabilities((*devices)[i]);
+        /* TODO: perhaps reject devices that cannot be used */
+    }
+    return count;
+}
+
+
+bool joy_init(void)
+{
+    /* just this for now */
+    return joy_arch_init();
+}

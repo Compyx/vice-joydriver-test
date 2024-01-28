@@ -174,10 +174,12 @@ typedef struct joy_driver_s {
  *          arch and which are provided by VICE independent of arch.
  */
 
-bool          joy_init(void);   /* arch */
+bool          joy_init(void);
+bool          joy_arch_init(void);   /* arch */
 
 void          joy_driver_register(const joy_driver_t *drv);
-int           joy_device_list_init(joy_device_t ***devices);    /* arch */
+int           joy_arch_device_list_init(joy_device_t ***devices);    /* arch */
+int           joy_device_list_init     (joy_device_t ***devices);
 
 void          joy_device_list_free(joy_device_t  **devices);
 
@@ -185,6 +187,7 @@ joy_device_t *joy_device_new (void);
 void          joy_device_free(joy_device_t *dev);
 void          joy_device_dump(const joy_device_t *dev);
 joy_device_t *joy_device_get(joy_device_t **devices, const char *node);
+void          joy_device_set_capabilities(joy_device_t *joydev);
 
 const char   *joy_device_get_button_name(const joy_device_t *joydev, uint16_t code);
 const char   *joy_device_get_axis_name  (const joy_device_t *joydev, uint16_t code);
@@ -207,6 +210,5 @@ bool          joy_open (joy_device_t *joydev);
 bool          joy_poll (joy_device_t *joydev);
 void          joy_close(joy_device_t *joydev);
 
-void          joy_device_set_capabilities(joy_device_t *joydev);
 
 #endif

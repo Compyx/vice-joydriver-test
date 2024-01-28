@@ -465,7 +465,7 @@ static joy_device_t *get_device_data(const char *node)
 }
 
 
-int joy_device_list_init(joy_device_t ***devices)
+int joy_arch_device_list_init(joy_device_t ***devices)
 {
     struct dirent **namelist = NULL;
     joy_device_t  **joylist;
@@ -709,7 +709,7 @@ static bool joydev_poll(joy_device_t *joydev)
 }
 
 
-bool joy_init(void)
+bool joy_arch_init(void)
 {
     joy_driver_t driver = {
         .open      = joydev_open,
