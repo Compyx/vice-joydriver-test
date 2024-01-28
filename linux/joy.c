@@ -511,6 +511,8 @@ int joy_device_list_init(joy_device_t ***devices)
                    dev->num_buttons,
                    dev->num_axes);
 #endif
+            /* determine capabilities for emulated devices */
+            joy_device_set_capabilities(dev);
             joylist[joylist_index++] = dev;
         }
         lib_free(node);

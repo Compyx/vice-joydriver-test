@@ -94,22 +94,23 @@ joy_device_t *joy_device_new(void)
 {
     joy_device_t *dev = lib_malloc(sizeof *dev);
 
-    dev->name        = NULL;
-    dev->node        = NULL;
-    dev->vendor      = 0;
-    dev->product     = 0;
+    dev->name         = NULL;
+    dev->node         = NULL;
+    dev->vendor       = 0;
+    dev->product      = 0;
 
-    dev->num_buttons = 0;
-    dev->num_axes    = 0;
-    dev->num_hats    = 0;
+    dev->num_buttons  = 0;
+    dev->num_axes     = 0;
+    dev->num_hats     = 0;
 
-    dev->buttons     = NULL;
-    dev->axes        = NULL;
-    dev->hats        = NULL;
+    dev->buttons      = NULL;
+    dev->axes         = NULL;
+    dev->hats         = NULL;
 
-    dev->port        = -1;  /* unassigned */
+    dev->port         = -1;  /* unassigned */
+    dev->capabilities = JOY_CAPS_NONE;  /* cannot be mapped to any emulated input */
 
-    dev->priv        = NULL;
+    dev->priv         = NULL;
 
     return dev;
 }
@@ -173,13 +174,27 @@ void joy_device_free(joy_device_t *joydev)
 void joy_device_dump(const joy_device_t *joydev)
 {
     if (verbose) {
-        printf("name   : %s\n",          null_str(joydev->name));
-        printf("node   : %s\n",          null_str(joydev->node));
-        printf("vendor : %04"PRIx16"\n", joydev->vendor);
-        printf("product: %04"PRIx16"\n", joydev->product);
-        printf("buttons: %"PRIu32"\n",   joydev->num_buttons);
-        printf("axes   : %"PRIu32"\n",   joydev->num_axes);
-        printf("hats   : %"PRIu32"\n",   joydev->num_hats);
+        printf("name       : %s\n",          null_str(joydev->name));
+        printf("node       : %s\n",          null_str(joydev->node));
+        printf("vendor     : %04"PRIx16"\n", joydev->vendor);
+        printf("product    : %04"PRIx16"\n", joydev->product);
+        printf("buttons    : %"PRIu32"\n",   joydev->num_buttons);
+        printf("axes       : %"PRIu32"\n",   joydev->num_axes);
+        printf("hats       : %"PRIu32"\n",   joydev->num_hats);
+        printf("capabilites:");
+        if (joydev->capabilities & JOY_CAPS_PADDLE) {
+            printf(" paddle");
+        }
+        if (joydev->capabilities & JOY_CAPS_JOYSTICK) {
+            printf(" joystick");
+        }
+        if (joydev->capabilities & JOY_CAPS_MOUSE) {
+            printf(" mouse");
+        }
+        if (joydev->capabilities & JOY_CAPS_KOALA) {
+            printf(" koala");
+        }
+        putchar('\n');
     } else {
         printf("%s: %s (%"PRIu32" %s, %"PRIu32" %s, %"PRIu32" %s)\n",
                null_str(joydev->node), null_str(joydev->name),
@@ -539,3 +554,32 @@ bool joy_poll(joy_device_t *joydev)
     }
     return driver.poll(joydev);
 }
+
+
+/** \brief  Determine required inputs for emulated device classes
+ *
+ * Check inputs in \a joydev to determine which class of emulated device can
+ * be mapped to the device.
+ *
+ * \param[in]   joydev  joystick device
+ */
+void joy_device_set_capabilities(joy_device_t *joydev)
+{
+    uint32_t caps = 0;
+
+    if (joydev->num_axes >= 1u && joydev->num_buttons >= 1u) {
+        caps |= JOY_CAPS_PADDLE;
+    }
+    if (joydev->num_axes >= 2u && joydev->num_buttons >= 2u) {
+        caps |= JOY_CAPS_MOUSE|JOY_CAPS_KOALA;
+    }
+    if ((joydev->num_axes >= 2u && joydev->num_buttons >= 1u) ||
+        (joydev->num_hats >= 1u && joydev->num_buttons >= 1u) ||
+        (joydev->num_buttons >= 5u)) {
+        caps |= JOY_CAPS_JOYSTICK;
+    }
+    joydev->capabilities = caps;
+}
+
+
+

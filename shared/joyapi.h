@@ -14,6 +14,31 @@
  * Joystick mapping structs and enums
  */
 
+/** \brief  Device cannot map to anything and needs to be rejected */
+#define JOY_CAPS_NONE       0x00
+
+/** \brief  Device is capable of mapping to paddle input
+ *
+ * For paddle emulation at least one axis and one button needs to be present.
+ */
+#define JOY_CAPS_PADDLE     0x01
+
+/** \brief  Device is capable of mapping to mouse input
+ *
+ * For mouse emulation at least two axes and two buttons need to present.
+ */
+#define JOY_CAPS_MOUSE      0x02
+
+/** \brief  Device is capable of mapping to Koala Pad input */
+#define JOY_CAPS_KOALA      0x04
+
+/** \brief  Device is capable of mapping to joystick input
+ *
+ * For joystick emulation at least two axes and one button, or a hat and one
+ * button need to be present.
+ */
+#define JOY_CAPS_JOYSTICK   0x08
+
 /** \brief  Types of mapping actions  */
 typedef enum joy_action_s {
     JOY_ACTION_NONE,            /**< no mapping (ignore input) */
@@ -125,6 +150,7 @@ typedef struct joy_device_s {
     joy_hat_t    *hats;             /**< list of hats */
 
     int           port;             /**< port number (0-based, -1 = unassigned) */
+    uint32_t      capabilities;     /**< capabilities bitmask */
 
     void         *priv;             /**< used for driver/arch-specific data */
 } joy_device_t;
@@ -180,5 +206,7 @@ void          joy_hat_event   (joy_device_t *joydev, joy_hat_t    *hat,    int32
 bool          joy_open (joy_device_t *joydev);
 bool          joy_poll (joy_device_t *joydev);
 void          joy_close(joy_device_t *joydev);
+
+void          joy_device_set_capabilities(joy_device_t *joydev);
 
 #endif
