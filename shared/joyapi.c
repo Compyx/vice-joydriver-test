@@ -314,7 +314,8 @@ void joy_axis_init(joy_axis_t *axis)
     axis->flat        = 0;
     axis->resolution  = 1;
     axis->granularity = 1;
-    joy_mapping_init(&(axis->mapping));
+    joy_mapping_init(&(axis->mapping.pin[0]));
+    joy_mapping_init(&(axis->mapping.pin[1]));
 }
 
 
@@ -432,7 +433,7 @@ static void joy_perform_event(joy_device_t  *joydev,
  * \param[in]   axis    axis object
  * \param[in]   value   axis value
  */
-void joy_axis_event(joy_device_t *joydev, joy_axis_t *axis, int32_t value)
+void joy_axis_event(joy_device_t *joydev, joy_axis_t *axis, joystick_axis_value_t value)
 {
     if (axis == NULL) {
         fprintf(stderr, "%s(): error: `axis` is NULL\n", __func__);
@@ -592,8 +593,13 @@ int joy_device_list_init(joy_device_t ***devices)
         return count;
     }
     for (int i = 0; i < count; i++) {
-        joy_device_set_capabilities((*devices)[i]);
+        joy_device_t *joydev = (*devices)[i];
+
+        joy_device_set_capabilities(joydev);
         /* TODO: perhaps reject devices that cannot be used */
+
+        /* create default mapping */
+        joy_arch_device_create_default_mapping(joydev);
     }
     return count;
 }

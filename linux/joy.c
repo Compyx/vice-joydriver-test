@@ -381,7 +381,6 @@ static void scan_hats(joy_device_t *joydev, struct libevdev *evdev)
 
                 /* X axis */
                 absinfo = libevdev_get_abs_info(evdev, x_code);
-                memset(x_axis, 0, sizeof *x_axis);
                 x_axis->code = x_code;
                 x_axis->name = lib_strdup(get_axis_name(x_code));
                 if (absinfo != NULL) {
@@ -397,7 +396,6 @@ static void scan_hats(joy_device_t *joydev, struct libevdev *evdev)
 
                 /* Y axis */
                 absinfo = libevdev_get_abs_info(evdev, y_code);
-                memset(y_axis, 0, sizeof *y_axis);
                 y_axis->code = y_code;
                 y_axis->name = lib_strdup(get_axis_name(y_code));
                 if (absinfo != NULL) {
@@ -412,6 +410,7 @@ static void scan_hats(joy_device_t *joydev, struct libevdev *evdev)
                 }
 
                 hat->name = lib_strdup(get_hat_name(x_code));
+                hat->code = x_code;
                 //printf("hat name = %s\n", hat->name);
 
                 num++;
@@ -588,7 +587,7 @@ static void joydev_close(joy_device_t *joydev)
     }
 }
 
-
+#if 0
 static int hat_to_joy_direction(int code, int value)
 {
     int direction = 0;
@@ -626,9 +625,39 @@ static int hat_to_joy_direction(int code, int value)
     }
     return direction;
 }
+#endif
+
+static uint16_t get_hat_x_for_hat_code(uint16_t code)
+{
+    switch (code) {
+        case ABS_HAT0X:
+        case ABS_HAT0Y:
+            return ABS_HAT0X;
+        case ABS_HAT1X:
+        case ABS_HAT1Y:
+            return ABS_HAT1X;
+        case ABS_HAT2X:
+        case ABS_HAT2Y:
+            return ABS_HAT2X;
+        case ABS_HAT3X:
+        case ABS_HAT3Y:
+            return ABS_HAT3X;
+        default:
+            return 0;
+    }
+}
+
 
 static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
 {
+    joy_hat_t             *hat;
+    joy_axis_t            *axis;
+    joystick_axis_value_t  axis_value;
+    int32_t                minimum;
+    int32_t                maximum;
+    int32_t                centered;
+    int32_t                threshold;
+
     if (event->type == EV_SYN) {
         msg_verbose("event: time %ld.%06ld: %s\n",
                     event->input_event_sec,
@@ -651,13 +680,64 @@ static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
                              joy_button_from_code(joydev, event->code),
                              event->value);
         } else if (IS_AXIS(event->code)) {
-            joy_axis_event(joydev,
-                           joy_axis_from_code(joydev, event->code),
-                           event->value);
+            /* TODO: configurable threshold/deadzone */
+            axis      = joy_axis_from_code(joydev, event->code);
+            minimum   = axis->minimum;
+            maximum   = axis->maximum;
+            centered  = (maximum - minimum) / 2;
+            threshold = centered / 2;
+
+            if (event->value < (centered - threshold)) {
+                axis_value = JOY_AXIS_NEGATIVE;
+            } else if ((event->value >= (centered - threshold)) &&
+                       (event->value <= (centered + threshold))) {
+                axis_value = JOY_AXIS_MIDDLE;
+            } else {
+                axis_value = JOY_AXIS_POSITIVE;
+            }
+
+            joy_axis_event(joydev, axis, axis_value);
+
         } else if (IS_HAT(event->code)) {
-            joy_hat_event(joydev,
-                          joy_hat_from_code(joydev, event->code),
-                          hat_to_joy_direction(event->code, event->value));
+
+            hat = joy_hat_from_code(joydev, get_hat_x_for_hat_code(event->code));
+            if (hat == NULL) {
+                fprintf(stderr, "%s(): error: hat is NULL\n", __func__);
+                return;
+            }
+      //      printf("hat name = %s\n", hat->name);
+
+            if (event->value < 0) {
+                axis_value = JOY_AXIS_NEGATIVE;
+            } else if (event->value > 0) {
+                axis_value = JOY_AXIS_POSITIVE;
+            } else {
+                axis_value = JOY_AXIS_MIDDLE;
+            }
+
+            switch (event->code) {
+                case ABS_HAT0X:
+                case ABS_HAT1X:
+                case ABS_HAT2X:
+                case ABS_HAT3X:
+                    axis = &(hat->x);
+                    break;
+                case ABS_HAT0Y:
+                case ABS_HAT1Y:
+                case ABS_HAT2Y:
+                case ABS_HAT3Y:
+                    axis = &(hat->y);
+                    break;
+                default:
+                    fprintf(stderr, "%s(): warning: unknown hat axis code %04x\n",
+                            __func__, (unsigned int)event->code);
+                    return;
+            }
+#if 0
+            printf("axis = %p\n", (const void*)axis);
+            printf("axis->name = %s\n", axis->name);
+#endif
+            joy_axis_event(joydev, axis, axis_value);
         }
     }
 }
@@ -721,3 +801,70 @@ bool joy_arch_init(void)
     joy_driver_register(&driver);
     return true;
 }
+
+
+bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
+{
+    joy_mapping_t *mapping;
+    joy_axis_t    *axis;
+    joy_button_t  *button;
+    joy_hat_t     *hat;
+
+    if (joydev->capabilities == JOY_CAPS_NONE) {
+        printf("%s(): no capabilites for device %s\n", __func__, joydev->name);
+        return false;
+    }
+
+    /* first try joystick */
+    if (joydev->capabilities & JOY_CAPS_JOYSTICK) {
+        if (joydev->num_hats >= 1u) {
+            printf("%s(): got at least one hat\n", __func__);
+            /* map (first) hat to pins */
+            hat = &(joydev->hats[0]);
+
+            /* negative direction of X axis */
+            mapping = &(hat->x.mapping.pin[0]);
+            mapping->action   = JOY_ACTION_JOYSTICK;
+            mapping->data.pin = JOYSTICK_DIRECTION_LEFT;
+            /* positive direction of X axis */
+            mapping = &(hat->x.mapping.pin[1]);
+            mapping->action   = JOY_ACTION_JOYSTICK;
+            mapping->data.pin = JOYSTICK_DIRECTION_RIGHT;
+
+            /* negative direction of Y axis */
+            mapping = &(hat->x.mapping.pin[0]);
+            mapping->action   = JOY_ACTION_JOYSTICK;
+            mapping->data.pin = JOYSTICK_DIRECTION_UP;
+            /* positive direction of Y axis */
+            mapping = &(hat->x.mapping.pin[1]);
+            mapping->action   = JOY_ACTION_JOYSTICK;
+            mapping->data.pin = JOYSTICK_DIRECTION_DOWN;
+        } else if (joydev->num_axes >= 2u) {
+            /* assume first axis to be X axis */
+            axis = &(joydev->axes[0]);
+            /* negative -> left */
+            axis->mapping.pin[0].action = JOY_ACTION_JOYSTICK;
+            axis->mapping.pin[0].data.pin = JOYSTICK_DIRECTION_LEFT;
+            /* positive -> right */
+            axis->mapping.pin[1].action = JOY_ACTION_JOYSTICK;
+            axis->mapping.pin[1].data.pin = JOYSTICK_DIRECTION_RIGHT;
+
+            /* second axis: X axis */
+            axis = &(joydev->axes[1]);
+            /* negative -> up */
+            axis->mapping.pin[0].action = JOY_ACTION_JOYSTICK;
+            axis->mapping.pin[0].data.pin = JOYSTICK_DIRECTION_UP;
+            /* positive -> down */
+            axis->mapping.pin[1].action = JOY_ACTION_JOYSTICK;
+            axis->mapping.pin[1].data.pin = JOYSTICK_DIRECTION_DOWN;
+        }
+
+        button  = &(joydev->buttons[0]);
+        mapping = &(button->mapping);
+        mapping->action  = JOY_ACTION_JOYSTICK;
+        mapping->data.pin = 16;
+    }
+
+    return true;
+}
+

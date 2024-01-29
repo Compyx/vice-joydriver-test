@@ -86,6 +86,12 @@ typedef enum {
     JOY_HAT_NORTHWEST
 } joy_hat_direction_t;
 
+typedef enum joystick_axis_value_e {
+    JOY_AXIS_NEGATIVE = -1,
+    JOY_AXIS_MIDDLE = 0,
+    JOY_AXIS_POSITIVE
+} joystick_axis_value_t;
+
 
 #define JOYSTICK_DIRECTION_NONE     0
 #define JOYSTICK_DIRECTION_UP       1
@@ -95,7 +101,6 @@ typedef enum {
 
 
 #define JOY_HAT_NUM_DIRECTIONS  (JOY_HAT_NORTHWEST + 1)
-
 
 /** \brief  Joystick button object */
 typedef struct joy_button_s {
@@ -116,7 +121,10 @@ typedef struct joy_axis_s {
     int32_t        flat;        /**< flat (Linux only) */
     int32_t        resolution;  /**< resolution of axis (units per mm) */
     uint32_t       granularity; /**< granularity of reported values (Windows) */
-    joy_mapping_t  mapping;     /**< input mapping */
+    union {
+        joy_mapping_t pin[2];
+        joy_mapping_t pot;
+    } mapping;
 } joy_axis_t;
 
 /** \brief  Joystick hat object
@@ -169,16 +177,17 @@ typedef struct joy_driver_s {
 /*
  * Prototypes mark 'arch' are expected to be implemented for the arch using
  * arch-specific code.
- * TODO:    Perhaps affix these with _arch_ like the hotkeys API does to make
- *          it clear which functions are expected to be implemented for an
- *          arch and which are provided by VICE independent of arch.
  */
 
+bool          joy_arch_init(void);
+int           joy_arch_device_list_init(joy_device_t ***devices);
+bool          joy_arch_device_create_default_mapping(joy_device_t *joydev);
+
+/* Shared code */
+
 bool          joy_init(void);
-bool          joy_arch_init(void);   /* arch */
 
 void          joy_driver_register(const joy_driver_t *drv);
-int           joy_arch_device_list_init(joy_device_t ***devices);    /* arch */
 int           joy_device_list_init     (joy_device_t ***devices);
 
 void          joy_device_list_free(joy_device_t  **devices);
@@ -204,7 +213,7 @@ joy_hat_t    *joy_hat_from_code   (joy_device_t *joydev, uint16_t code);
 
 void          joy_axis_event  (joy_device_t *joydev, joy_axis_t   *axis,   int32_t value);
 void          joy_button_event(joy_device_t *joydev, joy_button_t *button, int32_t value);
-void          joy_hat_event   (joy_device_t *joydev, joy_hat_t    *hat,    int32_t value);
+void          joy_hat_event   (joy_device_t *joydev, joy_hat_t    *hat,    joystick_axis_value_t value);
 
 bool          joy_open (joy_device_t *joydev);
 bool          joy_poll (joy_device_t *joydev);
