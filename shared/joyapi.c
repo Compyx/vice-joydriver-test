@@ -314,8 +314,8 @@ void joy_axis_init(joy_axis_t *axis)
     axis->flat        = 0;
     axis->resolution  = 1;
     axis->granularity = 1;
-    joy_mapping_init(&(axis->mapping.pin[0]));
-    joy_mapping_init(&(axis->mapping.pin[1]));
+    joy_mapping_init(&(axis->mapping.pin[JOY_AXIS_IDX_NEG]));
+    joy_mapping_init(&(axis->mapping.pin[JOY_AXIS_IDX_POS]));
 }
 
 
