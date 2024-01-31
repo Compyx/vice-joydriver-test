@@ -781,7 +781,9 @@ static bool joydev_poll(joy_device_t *joydev)
                 printf("=== resynced ===\n");
             }
         } else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
-            poll_dispatch_event(joydev, &event);
+            if (event.type == EV_ABS || event.type == EV_KEY) {
+                poll_dispatch_event(joydev, &event);
+            }
         }
     }
 
