@@ -87,7 +87,7 @@ typedef struct joy_mapping_s {
         joy_pot_axis_t pot;         /* JOY_ACTION_POT_AXIS */
         joy_key_map_t  key;         /* JOY_ACTION_KEYBOARD */
         int            ui_action;   /* JOY_ACTION_UI_ACTION */
-    } data;
+    } target;
     joy_calibration_t  calibration;
 } joy_mapping_t;
 
@@ -106,8 +106,8 @@ typedef enum {
 
 typedef enum joystick_axis_value_e {
     JOY_AXIS_NEGATIVE = -1,
-    JOY_AXIS_MIDDLE = 0,
-    JOY_AXIS_POSITIVE
+    JOY_AXIS_MIDDLE   =  0,
+    JOY_AXIS_POSITIVE =  1
 } joystick_axis_value_t;
 
 

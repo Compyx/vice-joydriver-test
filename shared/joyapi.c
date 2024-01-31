@@ -304,7 +304,7 @@ void joy_calibration_init(joy_calibration_t *calibration)
 void joy_mapping_init(joy_mapping_t *mapping)
 {
     mapping->action = JOY_ACTION_NONE;
-    memset(&(mapping->data), 0, sizeof mapping->data);
+    memset(&(mapping->target), 0, sizeof mapping->target);
     joy_calibration_init(&(mapping->calibration));
 }
 
@@ -414,16 +414,16 @@ static void joy_perform_event(joy_device_t  *joydev,
             break;
         case JOY_ACTION_JOYSTICK:
             printf("event: port %d - JOYSTICK - pin: %d, value: %"PRId32"\n",
-                   joydev->port, event->data.pin, value);
+                   joydev->port, event->target.pin, value);
             break;
         case JOY_ACTION_KEYBOARD:
-            key = &(event->data.key);
+            key = &(event->target.key);
             printf("event: port %d - KEYBOARD - row: %d, column: %d, flags: %02"PRIx32", value: %"PRId32"\n",
                    joydev->port, key->row, key->column, key->flags, value);
             break;
         case JOY_ACTION_POT_AXIS:
             printf("event: port %d: - POT %c - value: %02"PRIx32"\n",
-                   joydev->port, event->data.pot == JOY_POTX ? 'X' : 'Y', value);
+                   joydev->port, event->target.pot == JOY_POTX ? 'X' : 'Y', value);
             break;
         case JOY_ACTION_UI_ACTION:
             printf("event: UI ACTION: id: %"PRId32"\n", value);
