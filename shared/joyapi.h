@@ -66,6 +66,19 @@ typedef enum joy_pot_axis_s {
 #define JOY_AXIS_IDX_POS    1   /**< positive axis index */
 #define JOY_AXIS_IDX_NUM    2   /**< number of axis indexes */
 
+/** \brief  Calibration data for a "normal" axis
+ *
+ * Calibration data for an axis that has a neutral position in the middle of
+ * its range. For triggers we might need a different data structure.
+ */
+typedef struct joy_calibration_s {
+    int32_t threshold_neg;
+    int32_t threshold_pos;
+    int32_t deadzone_neg;
+    int32_t deadzone_pos;
+    bool    invert;
+} joy_calibration_t;
+
 /** \brief  Mapping of host input to emulator input or action */
 typedef struct joy_mapping_s {
     joy_action_t       action;
@@ -75,6 +88,7 @@ typedef struct joy_mapping_s {
         joy_key_map_t  key;         /* JOY_ACTION_KEYBOARD */
         int            ui_action;   /* JOY_ACTION_UI_ACTION */
     } data;
+    joy_calibration_t  calibration;
 } joy_mapping_t;
 
 
@@ -206,10 +220,11 @@ const char   *joy_device_get_button_name(const joy_device_t *joydev, uint16_t co
 const char   *joy_device_get_axis_name  (const joy_device_t *joydev, uint16_t code);
 const char   *joy_device_get_hat_name   (const joy_device_t *joydev, uint16_t code);
 
-void          joy_mapping_init(joy_mapping_t *mapping);
-void          joy_axis_init   (joy_axis_t    *axis);
-void          joy_button_init (joy_button_t  *button);
-void          joy_hat_init    (joy_hat_t     *hat);
+void          joy_calibration_init(joy_calibration_t *calibration);
+void          joy_mapping_init    (joy_mapping_t     *mapping);
+void          joy_axis_init       (joy_axis_t        *axis);
+void          joy_button_init     (joy_button_t      *button);
+void          joy_hat_init        (joy_hat_t         *hat);
 
 joy_axis_t   *joy_axis_from_code  (joy_device_t *joydev, uint16_t code);
 joy_button_t *joy_button_from_code(joy_device_t *joydev, uint16_t code);

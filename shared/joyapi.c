@@ -288,6 +288,15 @@ const char *joy_device_get_hat_name(const joy_device_t *joydev, uint16_t hat)
 #define joy_direction_name(mask) (joy_direction_names[mask & 0x0f])
 
 
+void joy_calibration_init(joy_calibration_t *calibration)
+{
+    calibration->threshold_neg = 0;
+    calibration->threshold_pos = 0;
+    calibration->deadzone_neg  = 0;
+    calibration->deadzone_pos  = 0;
+    calibration->invert        = false;
+}
+
 /** \brief  Initialize joystick mapping object to default values
  *
  * \param[in]   mapping joystick mapping
@@ -296,6 +305,7 @@ void joy_mapping_init(joy_mapping_t *mapping)
 {
     mapping->action = JOY_ACTION_NONE;
     memset(&(mapping->data), 0, sizeof mapping->data);
+    joy_calibration_init(&(mapping->calibration));
 }
 
 
