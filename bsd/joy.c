@@ -57,6 +57,10 @@
 #define NODE_PREFIX     "uhid"
 #define NODE_PREFIX_LEN strlen(NODE_PREFIX)
 
+typedef struct dpad_pin_s {
+    uint16_t code;
+    int      pin;
+} dpad_pin_t;
 
 typedef struct joy_priv_s {
     void          *buffer;
@@ -66,6 +70,13 @@ typedef struct joy_priv_s {
     int            fd;
 } joy_priv_t;
 
+
+static const dpad_pin_t dpad_pins[4] = {
+    { HUG_D_PAD_UP,    JOYSTICK_DIRECTION_UP },
+    { HUG_D_PAD_DOWN,  JOYSTICK_DIRECTION_DOWN },
+    { HUG_D_PAD_LEFT,  JOYSTICK_DIRECTION_LEFT },
+    { HUG_D_PAD_RIGHT, JOYSTICK_DIRECTION_RIGHT }
+};
 
 static joy_priv_t *joy_priv_new(void)
 {
@@ -97,6 +108,27 @@ static void joy_priv_free(void *priv)
     }
 }
 
+static bool has_dpad(joy_device_t *joydev)
+{
+    if (joydev->num_buttons >= 4u) {
+        uint32_t dpad = 0;
+        uint32_t b;
+        uint32_t d;
+
+        for (b = 0; b < joydev->num_buttons; b++) {
+            for (d = 0; d < ARRAY_LEN(dpad_pins); d++) {
+                if (joydev->buttons[b].code == dpad_pins[b].code) {
+                    dpad |= (1u << b);
+                    break;
+                }
+            }
+        }
+        if (dpad == 0x0f) {
+            return true;
+        }
+    }
+    return false;
+}
 
 static int sd_select(const struct dirent *de)
 {
@@ -105,7 +137,6 @@ static int sd_select(const struct dirent *de)
     return ((strlen(name) >= NODE_PREFIX_LEN + 1u) &&
             (strncmp(NODE_PREFIX, name, NODE_PREFIX_LEN) == 0));
 }
-
 
 static char *get_full_node_path(const char *node)
 {
@@ -354,7 +385,7 @@ static joy_device_t *get_device_data(const char *node)
 }
 
 
-int joy_device_list_init(joy_device_t ***devices)
+int joy_arch_device_list_init(joy_device_t ***devices)
 {
     joy_device_t  **joylist;
     struct dirent **namelist = NULL;
@@ -530,7 +561,7 @@ static bool joydev_poll(joy_device_t *joydev)
  *
  * \return  \c true
  */
-bool joy_init(void)
+bool joy_arch_init(void)
 {
     joy_driver_t driver = {
         .open  = joydev_open,
@@ -540,5 +571,77 @@ bool joy_init(void)
     };
 
     joy_driver_register(&driver);
+    return true;
+}
+
+
+
+bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
+{
+    joy_axis_t    *axis;
+    joy_button_t  *button;
+
+    if (joydev->capabilities == JOY_CAPS_NONE) {
+        return false;
+    }
+    if (joydev->num_buttons < 1u) {
+        return false;
+    }
+
+    /* prefer D-Pad for direction pins */
+    if (joydev->num_buttons >= 5u && has_dpad(joydev)) {
+        printf("%s(): using D-Pad for joystick direction pins\n", __func__);
+
+        for (size_t d = 0; d < ARRAY_LEN(dpad_pins); d++) {
+            button  = joy_button_from_code(joydev, dpad_pins[d].code);
+            if (button == NULL) {
+                /* shouldn't happen */
+                fprintf(stderr,
+                        "%s(): error: expected to find button for D-Pad 0x%02x\n",
+                        __func__, (unsigned int)dpad_pins[d].code);
+                return false;
+            }
+            button->mapping.action     = JOY_ACTION_JOYSTICK;
+            button->mapping.target.pin = dpad_pins[d].pin;
+        }
+    } else if (joydev->num_axes >= 2) {
+        printf("%s(): use axes X & Y for joystick direction pins\n", __func__);
+
+        /* Y: up/down */
+        axis = joy_axis_from_code(joydev, HUG_Y);
+        if (axis == NULL) {
+            fprintf(stderr,
+                    "%s(): error: expected to find Y axis (0x%02x)\n",
+                    __func__, HUG_Y);
+            return false;
+        }
+        axis->mapping.pin[JOY_AXIS_IDX_NEG].action     = JOY_ACTION_JOYSTICK;
+        axis->mapping.pin[JOY_AXIS_IDX_NEG].target.pin = JOYSTICK_DIRECTION_UP;
+        axis->mapping.pin[JOY_AXIS_IDX_POS].action     = JOY_ACTION_JOYSTICK;
+        axis->mapping.pin[JOY_AXIS_IDX_POS].target.pin = JOYSTICK_DIRECTION_DOWN;
+
+        /* X: left/right */
+        axis = joy_axis_from_code(joydev, HUG_X);
+        if (axis == NULL) {
+            fprintf(stderr,
+                    "%s(): error: expected to find X axis (0x%02x)\n",
+                    __func__, HUG_X);
+            return false;
+        }
+        axis->mapping.pin[JOY_AXIS_IDX_NEG].action     = JOY_ACTION_JOYSTICK;
+        axis->mapping.pin[JOY_AXIS_IDX_NEG].target.pin = JOYSTICK_DIRECTION_LEFT;
+        axis->mapping.pin[JOY_AXIS_IDX_POS].action     = JOY_ACTION_JOYSTICK;
+        axis->mapping.pin[JOY_AXIS_IDX_POS].target.pin = JOYSTICK_DIRECTION_RIGHT;
+    }
+
+    /* map Button_1 to fire */
+    button = joy_button_from_code(joydev, 1u);
+    if (button == NULL) {
+        fprintf(stderr, "%s(): error: expected to find Button_1 (0x01)\n", __func__);
+        return false;
+    }
+    button->mapping.action     = JOY_ACTION_JOYSTICK;
+    button->mapping.target.pin = 16;
+
     return true;
 }
