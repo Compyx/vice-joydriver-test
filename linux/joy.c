@@ -675,11 +675,11 @@ static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
                    event->value);
         }
 
-        if (IS_BUTTON(event->code)) {
+        if (event->type == EV_KEY && IS_BUTTON(event->code)) {
             joy_button_event(joydev,
                              joy_button_from_code(joydev, event->code),
                              event->value);
-        } else if (IS_AXIS(event->code)) {
+        } else if (event->type == EV_ABS && IS_AXIS(event->code)) {
             /* TODO: configurable threshold/deadzone */
             axis      = joy_axis_from_code(joydev, event->code);
             minimum   = axis->minimum;
@@ -698,7 +698,7 @@ static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
 
             joy_axis_event(joydev, axis, axis_value);
 
-        } else if (IS_HAT(event->code)) {
+        } else if (event->type == EV_ABS && IS_HAT(event->code)) {
 
             hat = joy_hat_from_code(joydev, get_hat_x_for_hat_code(event->code));
             if (hat == NULL) {
