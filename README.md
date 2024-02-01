@@ -5,49 +5,49 @@ joystick drivers for the non-SDL UIs.
 Very much a work in progress.
 
 
-# Current status (2024-01-21)
-
-## Linux
-
-Scanning devices for capabilities works, polling works.
-
-# BSD
-
-Scanning devices for capabilities works. No polling yet.
-
-# Windows
-
-Scanning devices for capabilities works. No polling yet.
-
-# MacOS
-
-Unsupported.
-
-
-## Prerequisites:
+## Current status (2024-01-21)
 
 ### Linux
 
-- libevdev (`sudo apt install libevdev-dev`)
+Scanning devices for capabilities works, polling works.
 
-### NetBSD
+## BSD
 
-- none
+Scanning devices for capabilities works. No polling yet.
 
-### FreeBSD
+## Windows
 
-- none
+Scanning devices for capabilities works. No polling yet.
 
-### Windows
-
-- msys2
-
-### MacOS
+## MacOS
 
 Unsupported.
 
 
-## Command line program
+### Prerequisites:
+
+#### Linux
+
+- libevdev (`sudo apt install libevdev-dev`)
+
+#### NetBSD
+
+- none
+
+#### FreeBSD
+
+- none
+
+#### Windows
+
+- msys2
+
+#### MacOS
+
+Unsupported.
+
+
+### Command line program
 
 The test driver program is currently called `vice-joydriver-test`, and supports
 a few command line options:
@@ -66,7 +66,7 @@ a few command line options:
 | `--poll-interval` | milliseconds | Set interval between polls (default is 100 msec) |
 
 
-### Examples
+#### Examples
 
 Usage is fairly simple: `vice-joydriver-test [options] [<device1> <device2> .. <deviceN>]`
 Most options require at least one device node/GUID specified on the command
@@ -91,3 +91,18 @@ with `--poll-interval` (default is 100 milliseconds betwee polls):
 For example:
 `vice-joydriver-test /dev/input/event20 --poll --poll-interval 10`
 will poll 100 times per second. Polling can be stopped with SIGINT (Ctrl+C).
+
+
+## Devices used during testing
+
+The following table lists the devices used for testing (names are taken from
+the output of `lsusb`.
+
+| Name                                               | Vendor | Product | Description   |
+| -------------------------------------------------- | ------ | ------- | ------------- |
+| Logitech, Inc. F710 Wireless Gamepad [XInput Mode] | `046d` | `c21f`  |               |
+| Logitech, Inc. F310 Gamepad [DirectInput Mode]     | `046d` | `c216`  |               |
+| Manta MM812                                        | `081f` | `e401`  | "Rii GP100 SNES Retro USB Super Nintendo Controller" |
+| Saitek PLC Cyborg Force Rumble Pad                 | `06a3` | `ff0c`  |               |
+| Saitek PLC ST50 USB                                | `06a3` | `0168`  | An actual joystick, simple flightstick |
+| Sony Corp. Batoh Device / Playstation 3 Controller | `054c` | `0268`  |               |
