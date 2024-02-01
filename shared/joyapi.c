@@ -20,12 +20,10 @@
 #include "joyapi.h"
 
 
-extern bool debug;
-extern bool verbose;
-
-
 #define null_str(s) ((s) != NULL ? (s) : "(null)")
 
+extern bool debug;
+extern bool verbose;
 
 static const char *joy_direction_names[16] = {
     "None",         /* 0x00: - */

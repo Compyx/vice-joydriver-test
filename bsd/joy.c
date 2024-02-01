@@ -202,8 +202,8 @@ static void add_joy_button(button_iter_t *iter, const struct hid_item *item)
     joy_button_init(button);
     button->code = (uint16_t)HID_USAGE(item->usage);
     button->name = lib_strdup(hid_usage_in_page(item->usage));
-    printf("%s(): adding button %u: %s\n",
-           __func__, (unsigned int)button->code, button->name);
+    msg_debug("adding button %u: %s\n",
+              (unsigned int)button->code, button->name);
 }
 
 static void add_joy_axis(axis_iter_t *iter, const struct hid_item *item)
@@ -218,9 +218,8 @@ static void add_joy_axis(axis_iter_t *iter, const struct hid_item *item)
     axis->name = lib_strdup(hid_usage_in_page(item->usage));
     axis->minimum = item->logical_minimum;
     axis->maximum = item->logical_maximum;
-    printf("%s(): adding axis %u: %s (%d - %d)\n",
-           __func__, (unsigned int)axis->code, axis->name,
-           axis->minimum, axis->maximum);
+    msg_debug("adding axis %u: %s (%d - %d)\n",
+             (unsigned int)axis->code, axis->name, axis->minimum, axis->maximum);
 }
 
 static void add_joy_hat(hat_iter_t *iter, const struct hid_item *item)
@@ -231,8 +230,8 @@ static void add_joy_hat(hat_iter_t *iter, const struct hid_item *item)
     hat = &(iter->list[iter->index++]);
     joy_hat_init(hat);
     hat->name = lib_strdup(hid_usage_in_page(item->usage));
-    printf("%s(): adding hat %u: %s\n",
-           __func__, HID_USAGE(item->usage), hat->name);
+    msg_debug("adding hat %u: %s\n",
+              HID_USAGE(item->usage), hat->name);
 }
 
 
@@ -280,16 +279,22 @@ static joy_device_t *get_device_data(const char *node)
 
     report = hid_get_report_desc(fd);
     if (report == NULL) {
-        fprintf(stderr, "%s(): failed to get HID report for %s: %d: %s.\n",
-                __func__, node, errno, strerror(errno));
+        if (debug) {
+            fprintf(stderr, "%s(): failed to get HID report for %s: %d: %s.\n",
+                    __func__, node, errno, strerror(errno));
+        }
         close(fd);
         return NULL;
     }
 
     rep_size = hid_report_size(report, hid_input, rep_id);
-    printf("%s(): report size = %d\n", __func__, rep_size);
+    //printf("%s(): report size = %d\n", __func__, rep_size);
     if (rep_size <= 0) {
-        fprintf(stderr, "%s(): invalid report size of %d.\n", __func__, rep_size);
+        if (debug) {
+            fprintf(stderr,
+                    "%s(): error: invalid report size of %d.\n",
+                    __func__, rep_size);
+        }
         hid_dispose_report_desc(report);
         close(fd);
         return NULL;
@@ -316,8 +321,10 @@ static joy_device_t *get_device_data(const char *node)
 
     hdata = hid_start_parse(report, 1 << hid_input, rep_id);
     if (hdata == NULL) {
-        fprintf(stderr, "%s(): hid_start_parse() failed: %d (%s).\n",
-                __func__, errno, strerror(errno));
+        if (debug) {
+            fprintf(stderr, "%s(): hid_start_parse() failed: %d (%s).\n",
+                    __func__, errno, strerror(errno));
+        }
         hid_dispose_report_desc(report);
         close(fd);
         joy_device_free(joydev);
@@ -342,7 +349,6 @@ static joy_device_t *get_device_data(const char *node)
                         break;
                     case HUG_HAT_SWITCH:
                         /* hat, seems to be D-Pad on Logitech F710 */
-                        printf("%s(): TODO: got HUG_HAT_SWITCH\n", __func__);
                         add_joy_hat(&hat_iter, &hitem);
                         break;
                     case HUG_D_PAD_UP:      /* fall through */
@@ -419,7 +425,7 @@ int joy_arch_device_list_init(joy_device_t ***devices)
         char         *node;
 
         node         = get_full_node_path(namelist[n]->d_name);
-        printf("%s(): querying %s:\n", __func__, node);
+        msg_debug("querying %s.\n", node);
         joydev       = get_device_data(node);
         lib_free(node);
         if (joydev != NULL) {
@@ -474,8 +480,6 @@ static bool joydev_poll(joy_device_t *joydev)
         struct hid_item  item;
         struct hid_data *data;
 
-        printf("%s(): parsing report\n", __func__);
-
         data = hid_start_parse(priv->rep_desc, 1 << hid_input, priv->rep_id);
         if (data == NULL) {
             fprintf(stderr, "%s(): hid_start_parse() failed: %d (%s).\n",
@@ -500,19 +504,11 @@ static bool joydev_poll(joy_device_t *joydev)
                         case HUG_RZ:    /* fall through */
                         case HUG_SLIDER:
                             /* axis */
-#if 0
-                            printf("%s(): axis %d: %d\n",
-                                   __func__, usage, value);
-#endif
                             joy_axis_event(joydev,
                                            joy_axis_from_code(joydev, (uint16_t)usage),
                                            value);
                             break;
                         case HUG_HAT_SWITCH:
-#if 0
-                            printf("%s(): hat switch: %d\n",
-                                   __func__, value);
-#endif
                             joy_hat_event(joydev,
                                           joy_hat_from_code(joydev, (uint16_t)usage),
                                           value);
@@ -521,11 +517,7 @@ static bool joydev_poll(joy_device_t *joydev)
                         case HUG_D_PAD_DOWN:    /* fall through */
                         case HUG_D_PAD_LEFT:    /* fall through */
                         case HUG_D_PAD_RIGHT:
-                            /* treat D-Pad as buttons */
-#if 0
-                            printf("%s(): D-Pad %d: %d\n",
-                                   __func__, usage, value);
-#endif
+                            /* D-Pad is mapped as buttons */
                             joy_button_event(joydev,
                                              joy_button_from_code(joydev, (uint16_t)usage),
                                              value);
@@ -535,10 +527,6 @@ static bool joydev_poll(joy_device_t *joydev)
                     }
                     break;
                 case HUP_BUTTON:
-#if 0
-                    printf("%s(): button %d: %d\n",
-                           __func__, usage, value);
-#endif
                     joy_button_event(joydev,
                                      joy_button_from_code(joydev, (uint16_t)usage),
                                      value);
@@ -576,7 +564,6 @@ bool joy_arch_init(void)
 }
 
 
-
 bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
 {
     joy_axis_t    *axis;
@@ -591,7 +578,7 @@ bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
 
     /* prefer D-Pad for direction pins */
     if (joydev->num_buttons >= 5u && has_dpad(joydev)) {
-        printf("%s(): using D-Pad for joystick direction pins\n", __func__);
+        msg_debug("using D-Pad for joystick direction pins.\n");
 
         for (size_t d = 0; d < ARRAY_LEN(dpad_pins); d++) {
             button  = joy_button_from_code(joydev, dpad_pins[d].code);
@@ -606,7 +593,7 @@ bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
             button->mapping.target.pin = dpad_pins[d].pin;
         }
     } else if (joydev->num_axes >= 2) {
-        printf("%s(): use axes X & Y for joystick direction pins\n", __func__);
+        msg_debug("using axes X & Y for joystick direction pins.\n");
 
         /* Y: up/down */
         axis = joy_axis_from_code(joydev, HUG_Y);
