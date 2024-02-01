@@ -16,17 +16,20 @@ extern bool verbose;
 
 #define ARRAY_LEN(arr)  (sizeof arr / sizeof arr[0])
 
+/** \brief  Print message on stdout if --verbose is used */
 #define msg_verbose(...) \
     if (verbose) { \
         printf(__VA_ARGS__); \
     }
 
+/** \brief  Print message on stdout if --debug is used */
 #define msg_debug(...) \
     if (debug) { \
         printf("[DBG: %s:%d:%s()] ", __FILE__, __LINE__, __func__); \
         printf(__VA_ARGS__); \
     }
 
+/** \brief  Print message on stderr */
 #define msg_error(...) \
     fprintf(stderr, "%s(): error: ", __func__); \
     fprintf(stderr, __VA_ARGS__);
