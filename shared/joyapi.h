@@ -230,9 +230,9 @@ joy_axis_t   *joy_axis_from_code  (joy_device_t *joydev, uint16_t code);
 joy_button_t *joy_button_from_code(joy_device_t *joydev, uint16_t code);
 joy_hat_t    *joy_hat_from_code   (joy_device_t *joydev, uint16_t code);
 
-void          joy_axis_event  (joy_device_t *joydev, joy_axis_t   *axis,   int32_t value);
+void          joy_axis_event  (joy_device_t *joydev, joy_axis_t   *axis,   joystick_axis_value_t value);
 void          joy_button_event(joy_device_t *joydev, joy_button_t *button, int32_t value);
-void          joy_hat_event   (joy_device_t *joydev, joy_hat_t    *hat,    joystick_axis_value_t value);
+void          joy_hat_event   (joy_device_t *joydev, joy_hat_t    *hat,    int32_t value);
 
 bool          joy_open (joy_device_t *joydev);
 bool          joy_poll (joy_device_t *joydev);

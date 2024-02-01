@@ -9,6 +9,7 @@
 #include "lib.h"
 #include "joyapi.h"
 
+
 /** \brief  Iterator used for the devices enumerator callback */
 typedef struct {
     joy_device_t **list;    /**< list of devices */
@@ -346,7 +347,7 @@ static BOOL EnumDevices_cb(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
 }
 
 
-int joy_device_list_init(joy_device_t ***devices)
+int joy_arch_device_list_init(joy_device_t ***devices)
 {
     HRESULT       result;
     HINSTANCE     window;
@@ -440,7 +441,7 @@ static void joydev_close(joy_device_t *joydev)
 
 
 
-bool joy_init(void)
+bool joy_arch_init(void)
 {
     joy_driver_t driver = {
         .open      = joydev_open,
@@ -450,5 +451,14 @@ bool joy_init(void)
     };
 
     joy_driver_register(&driver);
+    return true;
+}
+
+
+bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
+{
+    if (joydev->num_buttons < 1u) {
+        return false;
+    }
     return true;
 }

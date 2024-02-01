@@ -3,7 +3,7 @@
 VPATH = shared
 PROG_CFLAGS = -O3 -g -std=c99 \
 	      -Wall -Wextra -Wcast-qual -Wshadow -Wconversion -Wsign-compare \
-	      -Wsign-conversion \
+	      -Wsign-conversion -Wenum-int-mismatch \
 	      -Wformat -Wformat-security -Wmissing-prototypes -Wstrict-prototypes \
 	      -Ishared
 
