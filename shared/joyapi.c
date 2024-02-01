@@ -74,7 +74,7 @@ void joy_device_list_free(joy_device_t **devices)
     msg_debug("Called\n");
     if (devices != NULL) {
         for (size_t i = 0; devices[i] != NULL; i++) {
-            msg_debug("Freeing device %zu: %s\n", i, devices[i]->name);
+            msg_debug("freeing device %zu: %s\n", i, devices[i]->name);
             joy_device_free(devices[i]);
         }
         lib_free(devices);
@@ -446,7 +446,7 @@ static void joy_perform_event(joy_device_t  *joydev,
 void joy_axis_event(joy_device_t *joydev, joy_axis_t *axis, joystick_axis_value_t value)
 {
     if (axis == NULL) {
-        fprintf(stderr, "%s(): error: `axis` is NULL\n", __func__);
+        msg_error("`axis` is NULL\n");
         return;
     }
 
@@ -464,7 +464,7 @@ void joy_axis_event(joy_device_t *joydev, joy_axis_t *axis, joystick_axis_value_
 void joy_button_event(joy_device_t *joydev, joy_button_t *button, int32_t value)
 {
     if (button == NULL) {
-        fprintf(stderr, "%s(): error: `button` is NULL\n", __func__);
+        msg_error("error: `button` is NULL\n");
         return;
     }
 
@@ -485,7 +485,7 @@ void joy_button_event(joy_device_t *joydev, joy_button_t *button, int32_t value)
 void joy_hat_event(joy_device_t *joydev, joy_hat_t *hat, int32_t value)
 {
     if (hat == NULL) {
-        fprintf(stderr, "%s(): error: `hat` is NULL\n", __func__);
+        msg_error("`hat` is NULL\n");
         return;
     }
 
@@ -509,18 +509,18 @@ bool joy_open(joy_device_t *joydev)
 {
     bool result;
 
-    msg_debug("Called\n");
+    msg_debug("called\n");
 
     if (joydev == NULL) {
-        fprintf(stderr, "%s(): error: `joydev` is null.\n", __func__);
+        msg_error("`joydev` is NULL\n");
         return false;
     }
     if (driver.open == NULL) {
-        fprintf(stderr, "%s(): error: no open() callback registered.\n", __func__);
+        msg_error("no open() callback registered\n");
         return false;
     }
 
-    msg_debug("Calling driver.open()\n");
+    msg_debug("calling driver.open()\n");
     result = driver.open(joydev);
     msg_debug("%s\n", result ? "OK" : "failed");
 
@@ -534,13 +534,13 @@ bool joy_open(joy_device_t *joydev)
  */
 void joy_close(joy_device_t *joydev)
 {
-    msg_debug("Called\n");
+    msg_debug("called\n");
     if (joydev == NULL) {
-        fprintf(stderr, "%s(): error: `joydev` is null.\n", __func__);
+        msg_error("`joydev` is NULL\n");
     } else if (driver.close == NULL) {
-        fprintf(stderr, "%s(): error: no close() callback registered.\n", __func__);
+        msg_error("no close() callback registered\n");
     } else {
-        msg_debug("Calling driver.close()\n");
+        msg_debug("calling driver.close()\n");
         driver.close(joydev);
     }
 }
@@ -554,13 +554,13 @@ void joy_close(joy_device_t *joydev)
  */
 bool joy_poll(joy_device_t *joydev)
 {
-    msg_debug("Called\n");
+    msg_debug("called\n");
     if (joydev == NULL) {
-        fprintf(stderr, "%s(): error: `joydev` is null.\n", __func__);
+        msg_error("`joydev` is NULL\n");
         return false;
     }
     if (driver.poll == NULL) {
-        fprintf(stderr, "%s(): error: no poll() callback registered.\n", __func__);
+        msg_error("no poll() callback registered\n");
         return false;
     }
     return driver.poll(joydev);

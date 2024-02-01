@@ -387,9 +387,9 @@ int main(int argc, char **argv)
     if (devcount == 0) {
         printf("No devices found.\n");
     } else if (devcount == 1) {
-        printf("Found 1 device.\n");
+        printf("Found 1 device:\n");
     } else if (devcount > 1) {
-        printf("Found %d devices.\n", devcount);
+        printf("Found %d devices:\n", devcount);
     } else {
         printf("%s: error querying devices.\n", cmdline_get_prg_name());
         status = EXIT_FAILURE;

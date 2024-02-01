@@ -27,6 +27,10 @@ extern bool verbose;
         printf(__VA_ARGS__); \
     }
 
+#define msg_error(...) \
+    fprintf(stderr, "%s(): error: ", __func__); \
+    fprintf(stderr, __VA_ARGS__);
+
 void *lib_malloc(size_t size);
 void *lib_realloc(void *ptr, size_t size);
 void  lib_free(void *ptr);

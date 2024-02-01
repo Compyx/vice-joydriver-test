@@ -584,9 +584,8 @@ bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
             button  = joy_button_from_code(joydev, dpad_pins[d].code);
             if (button == NULL) {
                 /* shouldn't happen */
-                fprintf(stderr,
-                        "%s(): error: expected to find button for D-Pad 0x%02x\n",
-                        __func__, (unsigned int)dpad_pins[d].code);
+                msg_error("error: expected to find button for D-Pad 0x%02x\n",
+                          (unsigned int)dpad_pins[d].code);
                 return false;
             }
             button->mapping.action     = JOY_ACTION_JOYSTICK;
@@ -598,9 +597,7 @@ bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
         /* Y: up/down */
         axis = joy_axis_from_code(joydev, HUG_Y);
         if (axis == NULL) {
-            fprintf(stderr,
-                    "%s(): error: expected to find Y axis (0x%02x)\n",
-                    __func__, HUG_Y);
+            msg_error("expected to find Y axis (0x%02x)\n", HUG_Y);
             return false;
         }
         axis->mapping.pin[JOY_AXIS_IDX_NEG].action     = JOY_ACTION_JOYSTICK;
@@ -611,9 +608,7 @@ bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
         /* X: left/right */
         axis = joy_axis_from_code(joydev, HUG_X);
         if (axis == NULL) {
-            fprintf(stderr,
-                    "%s(): error: expected to find X axis (0x%02x)\n",
-                    __func__, HUG_X);
+            msg_error("expected to find X axis (0x%02x)\n", HUG_X);
             return false;
         }
         axis->mapping.pin[JOY_AXIS_IDX_NEG].action     = JOY_ACTION_JOYSTICK;
@@ -625,7 +620,7 @@ bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
     /* map Button_1 to fire */
     button = joy_button_from_code(joydev, 1u);
     if (button == NULL) {
-        fprintf(stderr, "%s(): error: expected to find Button_1 (0x01)\n", __func__);
+        msg_error("expected to find Button_1 (0x01)\n");
         return false;
     }
     button->mapping.action     = JOY_ACTION_JOYSTICK;
