@@ -451,6 +451,7 @@ static joy_device_t *get_device_data(const char *node)
     joydev->node    = lib_strdup(node);
     joydev->vendor  = (uint16_t)libevdev_get_id_vendor(evdev);
     joydev->product = (uint16_t)libevdev_get_id_product(evdev);
+    joydev->version = (uint16_t)libevdev_get_id_version(evdev);
 
     scan_buttons(joydev, evdev);
     scan_axes(joydev, evdev);

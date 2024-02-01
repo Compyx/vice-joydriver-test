@@ -166,6 +166,7 @@ typedef struct joy_device_s {
                                          (Windows) */
     uint16_t      vendor;           /**< vendor ID */
     uint16_t      product;          /**< product ID */
+    uint16_t      version;          /**< version number */
 
     uint32_t      num_buttons;      /**< number of buttons */
     uint32_t      num_axes;         /**< number of axes */

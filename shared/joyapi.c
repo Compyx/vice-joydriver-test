@@ -98,6 +98,7 @@ joy_device_t *joy_device_new(void)
     dev->node         = NULL;
     dev->vendor       = 0;
     dev->product      = 0;
+    dev->version      = 0;
 
     dev->num_buttons  = 0;
     dev->num_axes     = 0;
@@ -178,6 +179,7 @@ void joy_device_dump(const joy_device_t *joydev)
         printf("node       : %s\n",          null_str(joydev->node));
         printf("vendor     : %04"PRIx16"\n", joydev->vendor);
         printf("product    : %04"PRIx16"\n", joydev->product);
+        printf("version    : %04"PRIx16"\n", joydev->version);
         printf("buttons    : %"PRIu32"\n",   joydev->num_buttons);
         printf("axes       : %"PRIu32"\n",   joydev->num_axes);
         printf("hats       : %"PRIu32"\n",   joydev->num_hats);
