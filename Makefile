@@ -1,9 +1,11 @@
 #CC = gcc
 #LD = $(CC)
 VPATH = shared
+
+# -Wenum-int-mismatch appears to be a GCC 13 addition
 PROG_CFLAGS = -O3 -g -std=c99 \
 	      -Wall -Wextra -Wcast-qual -Wshadow -Wconversion -Wsign-compare \
-	      -Wsign-conversion -Wenum-int-mismatch \
+	      -Wsign-conversion \
 	      -Wformat -Wformat-security -Wmissing-prototypes -Wstrict-prototypes \
 	      -Ishared
 
@@ -40,7 +42,7 @@ endif
 ifeq ($(UNAME_S),win32)
 	CC = gcc
 	LD = $(CC)
-	PROG_CFLAGS += -DWINDOWS_COMPILE
+	PROG_CFLAGS += -Wenum-int-mismatch -DWINDOWS_COMPILE
 	PROG_LDFLAGS += -ldinput8
 	VPATH += :win32
 endif
