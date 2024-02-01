@@ -308,6 +308,7 @@ static joy_device_t *get_device_data(const char *node)
     joydev->name    = name;
     joydev->vendor  = devinfo.udi_vendorNo;
     joydev->product = devinfo.udi_productNo;
+    joydev->version = devinfo.udi_releaseNo;
 
     LIST_ITER_INIT(&axis_iter, 8u);
     LIST_ITER_INIT(&button_iter, 16u);
