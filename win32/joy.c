@@ -145,8 +145,7 @@ static BOOL EnumObjects_buttons_cb(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
     joy_button_t  *button;
 
     if (iter->index >= iter->joydev->num_buttons) {
-        fprintf(stderr, "%s(): error: WinAPI lied about the number of buttons.\n",
-                __func__);
+        msg_error("WinAPI lied about the number of buttons.\n");
         return DIENUM_STOP;
     }
 
@@ -174,7 +173,7 @@ static BOOL EnumObjects_axes_cb(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
     joy_axis_init(axis);
     axis->code = DIDFT_GETINSTANCE(ddoi->dwType);
     axis->name = lib_strdup(ddoi->tszName);
-    printf("axis %u: %s\n", axis->code, axis->name);
+    msg_debug("axis %u: %s\n", axis->code, axis->name);
 
     /* get logical range */
     range.diph.dwSize       = sizeof(DIPROPRANGE);
@@ -185,7 +184,7 @@ static BOOL EnumObjects_axes_cb(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
                                              DIPROP_LOGICALRANGE,
                                              &range.diph);
     if (SUCCEEDED(result)) {
-  //      printf("range: %ld - %ld\n", range.lMin, range.lMax);
+        msg_debug("range: %ld - %ld\n", range.lMin, range.lMax);
         axis->minimum = range.lMin;
         axis->maximum = range.lMax;
     }
@@ -220,7 +219,7 @@ static BOOL EnumObjects_hats_cb(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
     y_axis = &(hat->y);
 
     hat->name = lib_strdup(ddoi->tszName);
-    printf("Hat name = %s\n", hat->name);
+    msg_debug("hat name = %s\n", hat->name);
 
     /* POVs are apparently mapped as a single integer indicating degrees of
      * view.
@@ -342,7 +341,6 @@ static BOOL EnumDevices_cb(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
     priv->didev = didev;
     joydev->priv = priv;
 
-//    IDirectInputDevice8_Release(didev);
     return DIENUM_CONTINUE;
 }
 
@@ -361,7 +359,7 @@ int joy_arch_device_list_init(joy_device_t ***devices)
                                 (void*)&dinput_handle,
                                 NULL);
     if (result != 0) {
-        printf("%s(): DirectInput8Create() failed: %ld\n", __func__, result);
+        msg_error("DirectInput8Create() failed: %lx\n", result);
         return -1;
     }
 
@@ -389,12 +387,16 @@ static bool joydev_open(joy_device_t *joydev)
 {
     joy_priv_t *priv = joydev->priv;
 
-    printf("%s(): opening device %s: ", __func__, joydev->name);
+    msg_debug("opening device %s: ", joydev->name);
     if (IDirectInputDevice8_Acquire(priv->didev) != DI_OK) {
-        printf("failed!\n");
+        if (debug) {
+            printf("failed!\n");
+        }
         return false;
     }
-    printf("OK.\n");
+    if (debug) {
+        printf("OK\n");
+    }
     return true;
 }
 
@@ -409,16 +411,12 @@ static bool joydev_poll(joy_device_t *joydev)
     didev  = priv->didev;
     result = IDirectInputDevice8_Poll(didev);
     if (result != DI_OK && result != DI_NOEFFECT) {
-        fprintf(stderr,
-                "%s(): Poll() failed: %lx\n",
-                __func__, result);
+        msg_error("IDirectInputDevice8::Poll() failed: %lx\n", result);
         return false;
     }
     result = IDirectInputDevice8_GetDeviceState(didev, sizeof(DIJOYSTATE), &jstate);
     if (result != DI_OK) {
-        fprintf(stderr,
-                "%s(): GetDeviceState() failed: %lx\n",
-                __func__, result);
+        msg_error("IDirectInputDevice8::GetDeviceState() failed: %lx\n", result);
         return false;
     }
 
