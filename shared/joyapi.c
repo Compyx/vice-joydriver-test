@@ -574,7 +574,7 @@ bool joy_poll(joy_device_t *joydev)
  *
  * \param[in]   joydev  joystick device
  */
-void joy_device_set_capabilities(joy_device_t *joydev)
+uint32_t joy_device_set_capabilities(joy_device_t *joydev)
 {
     uint32_t caps = 0;
 
@@ -590,6 +590,7 @@ void joy_device_set_capabilities(joy_device_t *joydev)
         caps |= JOY_CAPS_JOYSTICK;
     }
     joydev->capabilities = caps;
+    return caps;
 }
 
 
@@ -605,8 +606,9 @@ int joy_device_list_init(joy_device_t ***devices)
     for (int i = 0; i < count; i++) {
         joy_device_t *joydev = (*devices)[i];
 
-        joy_device_set_capabilities(joydev);
-        /* TODO: perhaps reject devices that cannot be used */
+        if (joy_device_set_capabilities(joydev) == JOY_CAPS_NONE) {
+            msg_debug("TODO: insufficient capabilities: reject device\n");
+        }
 
         /* create default mapping */
         joy_arch_device_create_default_mapping(joydev);
