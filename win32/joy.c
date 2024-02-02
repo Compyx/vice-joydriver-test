@@ -406,6 +406,17 @@ static bool joydev_poll(joy_device_t *joydev)
     DIJOYSTATE2           jstate;
     LPDIRECTINPUTDEVICE8  didev;
     HRESULT               result;
+    LONG                 *axis_values[] = {
+        &jstate.lX,   &jstate.lY,   &jstate.lZ,
+        &jstate.lRx,  &jstate.lRy,  &jstate.lRz,
+        &jstate.lVX,  &jstate.lVY,  &jstate.lVZ,
+        &jstate.lVRx, &jstate.lVRy, &jstate.lVRz,
+        &jstate.lAX,  &jstate.lAY,  &jstate.lAZ,
+        &jstate.lARx, &jstate.lARx, &jstate.lARz,
+        &jstate.lFX,  &jstate.lFY,  &jstate.lFZ,
+        &jstate.lFRx, &jstate.lFRy, &jstate.lFRz
+    };
+
 
     priv   = joydev->priv;
     didev  = priv->didev;
@@ -420,6 +431,7 @@ static bool joydev_poll(joy_device_t *joydev)
         return false;
     }
 
+    /* button events */
     for (uint32_t b = 0; b < joydev->num_buttons; b++) {
         /* no need to look up button via code, just use index */
         joy_button_t *button = &(joydev->buttons[b]);
@@ -429,6 +441,18 @@ static bool joydev_poll(joy_device_t *joydev)
         if (button->prev != newval) {
             joy_button_event(joydev, button, newval),
             button->prev = newval;
+        }
+    }
+
+    /* axis events */
+    for (uint32_t a = 0; a < joydev->num_axes && a < ARRAY_LEN(axis_values); a++) {
+        joy_axis_t *axis   = &(joydev->axes[a]);
+        LONG       *value  = axis_values[a];
+        int32_t     newval = (int32_t)*value;
+
+        if (newval != axis->prev) {
+            joy_axis_event(joydev, axis, newval);
+            axis->prev = newval;
         }
     }
 
