@@ -414,7 +414,7 @@ static bool joydev_poll(joy_device_t *joydev)
         msg_error("IDirectInputDevice8::Poll() failed: %lx\n", result);
         return false;
     }
-    result = IDirectInputDevice8_GetDeviceState(didev, sizeof(DIJOYSTATE), &jstate);
+    result = IDirectInputDevice8_GetDeviceState(didev, sizeof(DIJOYSTATE2), &jstate);
     if (result != DI_OK) {
         msg_error("IDirectInputDevice8::GetDeviceState() failed: %lx\n", result);
         return false;
