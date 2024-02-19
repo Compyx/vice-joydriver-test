@@ -161,7 +161,7 @@ static bool list_buttons(void)
         } else if (joydev->num_buttons == 0) {
             printf("No buttons for device found.\n");
         } else {
-            printf("Buttons for device %s (%s):\n", args[i], joydev->name);
+            printf("Buttons for device %s (\"%s\"):\n", args[i], joydev->name);
             for (uint32_t b = 0; b < joydev->num_buttons; b++) {
                 joy_button_t *button = &(joydev->buttons[b]);
 
@@ -197,13 +197,14 @@ static bool list_axes(void)
         } else  if (joydev->num_axes == 0) {
             printf("No axes for device found.\n");
         } else {
-            printf("Axes for device %s (%s):\n", args[i], joydev->name);
+            printf("Axes for device %s (\"%s\"):\n", args[i], joydev->name);
             for (uint32_t a = 0; a < joydev->num_axes; a++) {
                 joy_axis_t *axis = &joydev->axes[a];
 
                 if (verbose) {
-                    printf("%2u: %s, code: %04x, range: %"PRId32" - %"PRId32"\n",
-                           a, axis->name, axis->code, axis->minimum, axis->maximum);
+                    printf("%2u: %s (%s), code: %04x, range: %"PRId32" - %"PRId32"\n",
+                           a, axis->name, axis->digital ? "digital" : "analog",
+                           axis->code, axis->minimum, axis->maximum);
                 } else {
                     printf("%2u: %s\n", a, axis->name);
                 }
@@ -233,14 +234,14 @@ static bool list_hats(void)
         } else  if (joydev->num_hats == 0) {
             printf("No hats for device found.\n");
         } else {
-            printf("Hats for device %s (%s):\n", args[i], joydev->name);
+            printf("Hats for device %s (\"%s\"):\n", args[i], joydev->name);
 
             for (uint32_t h = 0; h < joydev->num_hats; h++) {
                 joy_hat_t *hat = &(joydev->hats[h]);
                 joy_axis_t *x = &(hat->x);
                 joy_axis_t *y = &(hat->y);
 
-                printf("%2x: %s\n", h, hat->name);
+                printf("%2x: %s (%s)\n", h, hat->name, x->digital ? "digital" : "analog");
                 if (verbose) {
                     printf("    X axis: code: %04x, name: %s, range: %"PRId32" - %"PRId32"\n",
                            x->code, x->name, x->minimum, x->maximum);

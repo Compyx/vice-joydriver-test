@@ -344,6 +344,16 @@ static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
                     axis->minimum    = INT16_MIN;
                     axis->maximum    = INT16_MAX;
                 }
+
+                /* determine if we're dealing with a digital or an analog axis */
+                if (axis->minimum == -1 && axis->maximum == 1) {
+                    /* definitely digital */
+                    axis->digital = true;
+                } else if (axis->flat == 0 && axis->fuzz == 0 && axis->resolution == 0) {
+                    /* most likely digital */
+                    axis->digital = true;
+                }
+
                 num++;
             }
         }
