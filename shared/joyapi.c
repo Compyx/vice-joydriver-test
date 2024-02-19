@@ -611,6 +611,9 @@ int joy_device_list_init(joy_device_t ***devices)
             msg_debug("TODO: insufficient capabilities: reject device\n");
         }
 
+        /* right-trim device name */
+        lib_strrtrim(joydev->name);
+
         /* create default mapping */
         joy_arch_device_create_default_mapping(joydev);
     }

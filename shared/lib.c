@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 #include "lib.h"
 
@@ -133,3 +134,26 @@ char *util_concat(const char *s, ...)
     *rpos = '\0';
     return result;
 }
+
+
+/** \brief  Right-trim string
+ *
+ * Remove trailing whitespace from string \a s, replacing each instance with
+ * \c 0.
+ *
+ * \param[in,out]   s   string to trim
+ */
+void lib_strrtrim(char *s)
+{
+    if (s != NULL && *s != '\0') {
+        long i = (long)strlen(s) - 1;
+
+        while (i >= 0 && isspace((unsigned char)s[i])) {
+            s[i--] = '\0';
+        }
+    }
+}
+
+
+
+
