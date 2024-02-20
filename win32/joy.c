@@ -460,16 +460,15 @@ static bool joydev_poll(joy_device_t *joydev)
     /* hat events */
     for (uint32_t h = 0; h < joydev->num_hats && h < ARRAY_LEN(jstate.rgdwPOV); h++) {
         joy_hat_t *hat       = &(joydev->hats[h]);
-        int32_t    newval    = jstate.rgdwPOV[h];
+        int32_t    newval    = (int32_t)(jstate.rgdwPOV[h]);
         int32_t    direction = JOYSTICK_DIRECTION_NONE;
 
         if (newval != hat->prev) {
             hat->prev = newval;
-            printf("%s(): LOWORD(jstate.rgdwPOV[%u] = %04x, %d\n",
-                   __func__, h, (unsigned int)newval, newval);
 
+            /* POVs map to 360 degrees, in units of 100th of a degree */
+            /* -1 / 0xffffffff is neutral, also discard invalid values */
             if (newval < 0 || newval >= 36000) {
-                /* neutral */
                 direction = JOYSTICK_DIRECTION_NONE;
             } else if (newval >= 33750 || newval <  2250) {
                 direction = JOYSTICK_DIRECTION_UP;
