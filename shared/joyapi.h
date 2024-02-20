@@ -93,6 +93,7 @@ typedef struct joy_mapping_s {
 
 
 typedef enum {
+    JOY_HAT_INVALID = -1,
     JOY_HAT_NEUTRAL = 0,
     JOY_HAT_NORTH,
     JOY_HAT_NORTHEAST,
@@ -153,7 +154,7 @@ typedef struct joy_axis_s {
 typedef struct joy_hat_s {
     uint16_t             code;      /**< code in case of USB hat switch (BSD) */
     char                *name;      /**< name */
-    int32_t              prev;      /**< previous value */
+    int32_t              prev;      /**< previous value (Windows) */
     joy_axis_t           x;         /**< X axis */
     joy_axis_t           y;         /**< Y axis */
     joy_hat_direction_t  hat_map[JOY_HAT_NUM_DIRECTIONS];   /* hat mapping */

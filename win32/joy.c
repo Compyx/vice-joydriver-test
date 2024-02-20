@@ -400,6 +400,7 @@ static bool joydev_open(joy_device_t *joydev)
     return true;
 }
 
+
 static bool joydev_poll(joy_device_t *joydev)
 {
     joy_priv_t           *priv;
@@ -455,6 +456,43 @@ static bool joydev_poll(joy_device_t *joydev)
             axis->prev = newval;
         }
     }
+
+    /* hat events */
+    for (uint32_t h = 0; h < joydev->num_hats && h < ARRAY_LEN(jstate.rgdwPOV); h++) {
+        joy_hat_t *hat       = &(joydev->hats[h]);
+        int32_t    newval    = jstate.rgdwPOV[h];
+        int32_t    direction = JOYSTICK_DIRECTION_NONE;
+
+        if (newval != hat->prev) {
+            hat->prev = newval;
+            printf("%s(): LOWORD(jstate.rgdwPOV[%u] = %04x, %d\n",
+                   __func__, h, (unsigned int)newval, newval);
+
+            if (newval < 0 || newval >= 36000) {
+                /* neutral */
+                direction = JOYSTICK_DIRECTION_NONE;
+            } else if (newval >= 33750 || newval <  2250) {
+                direction = JOYSTICK_DIRECTION_UP;
+            } else if (newval >=  2250 && newval <  6750) {
+                direction = JOYSTICK_DIRECTION_UP|JOYSTICK_DIRECTION_RIGHT;
+            } else if (newval >=  6750 && newval < 11250) {
+                direction = JOYSTICK_DIRECTION_RIGHT;
+            } else if (newval >= 11250 && newval < 15750) {
+                direction = JOYSTICK_DIRECTION_RIGHT|JOYSTICK_DIRECTION_DOWN;
+            } else if (newval >= 15750 && newval < 20250) {
+                direction = JOYSTICK_DIRECTION_DOWN;
+            } else if (newval >= 20250 && newval < 24750) {
+                direction = JOYSTICK_DIRECTION_DOWN|JOYSTICK_DIRECTION_LEFT;
+            } else if (newval >= 24750 && newval < 29250) {
+                direction = JOYSTICK_DIRECTION_LEFT;
+            } else if (newval >= 29250 && newval < 33750) {
+                direction = JOYSTICK_DIRECTION_LEFT|JOYSTICK_DIRECTION_UP;
+            }
+
+            joy_hat_event(joydev, hat, direction);
+        }
+    }
+
 
     return true;
 }
