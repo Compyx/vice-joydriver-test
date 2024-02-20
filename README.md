@@ -5,7 +5,7 @@ joystick drivers for the non-SDL UIs.
 Very much a work in progress.
 
 
-## Current status (2024-01-21)
+## Current status (2024-02-20)
 
 ### Linux
 
@@ -17,7 +17,7 @@ Scanning devices for capabilities works. No polling yet.
 
 ## Windows
 
-Scanning devices for capabilities works. No polling yet.
+Scanning devices for capabilities works, polling works.
 
 ## MacOS
 
