@@ -34,13 +34,15 @@ extern bool verbose;
     fprintf(stderr, "%s(): error: ", __func__); \
     fprintf(stderr, __VA_ARGS__);
 
-void *lib_malloc(size_t size);
-void *lib_realloc(void *ptr, size_t size);
-void  lib_free(void *ptr);
+void       *lib_malloc(size_t size);
+void       *lib_realloc(void *ptr, size_t size);
+void        lib_free(void *ptr);
+char       *lib_strdup(const char *s);
+char       *lib_strndup(const char *s, size_t n);
+void        lib_strrtrim(char *s);
+const char *lib_basename(const char *s);
 
-char *lib_strdup(const char *s);
-char *lib_strndup(const char *s, size_t n);
-void  lib_strrtrim(char *s);
-char *util_concat(const char *s, ...);
+char       *util_concat(const char *s, ...);
+const char *util_skip_whitespace(const char *s);
 
 #endif

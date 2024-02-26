@@ -1,0 +1,7 @@
+# VJM test file 1
+vjm-version 2.0
+
+device-vendor   0xabcd
+device-product  0xef01
+
+pin 1 "Button 1"

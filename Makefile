@@ -3,7 +3,7 @@
 VPATH = shared
 
 # -Wenum-int-mismatch appears to be a GCC 13 addition
-PROG_CFLAGS = -O3 -g -std=c99 \
+PROG_CFLAGS = -O0 -g -std=c99 \
 	      -Wall -Wextra -Wcast-qual -Wshadow -Wconversion -Wsign-compare \
 	      -Wsign-conversion \
 	      -Wformat -Wformat-security -Wmissing-prototypes -Wstrict-prototypes \
@@ -48,14 +48,15 @@ ifeq ($(UNAME_S),win32)
 endif
 
 PROG = vice-joydriver-test
-OBJS = main.o cmdline.o lib.o joy.o joyapi.o
+OBJS = main.o cmdline.o lib.o joy.o joyapi.o joymap.o
 
 all: $(PROG)
 
 cmdline.o: lib.o cmdline.h
 lib.o: lib.h
 joy.o: lib.o joyapi.o
-joyapi.o: joyapi.h
+joyapi.o: lib.o joymap.o joyapi.h
+joymap.o: lib.o joymap.h
 main.o: cmdline.o joy.o joyapi.o lib.o
 
 $(PROG): $(OBJS)

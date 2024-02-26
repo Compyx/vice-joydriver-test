@@ -13,6 +13,7 @@
 #include "lib.h"
 #include "cmdline.h"
 #include "joyapi.h"
+#include "joymap.h"
 
 
 /** \brief  Enable debug message */
@@ -27,6 +28,7 @@ static bool  opt_list_buttons  = false;
 static bool  opt_list_hats     = false;
 static bool  opt_poll_enable   = false;
 static int   opt_poll_interval = 100;
+static char *opt_joymap_file   = NULL;
 
 
 static const cmdline_opt_t options[] = {
@@ -74,6 +76,13 @@ static const cmdline_opt_t options[] = {
         .target     = &opt_poll_interval,
         .param      = "msec",
         .help       = "specificy polling interval"
+    },
+    {   .type       = CMDLINE_STRING,
+        .short_name = 'm',
+        .long_name  = "joymap",
+        .target     = &opt_joymap_file,
+        .param      = "filename",
+        .help       = "load joymap file"
     },
 
     CMDLINE_OPTIONS_END
@@ -356,7 +365,8 @@ poll_exit:
 
 int main(int argc, char **argv)
 {
-    int status = EXIT_SUCCESS;
+    joymap_t *joymap;
+    int       status = EXIT_SUCCESS;
 
     cmdline_init(PROGRAM_NAME, PROGRAM_VERSION);
     if (!cmdline_add_options(options)) {
@@ -383,6 +393,9 @@ int main(int argc, char **argv)
     /* initialize arch-specific joy system */
     joy_init();
 
+    /* initialize joymap parser */
+    joymap_module_init();
+
     /* enumerate connected devices */
     devcount = joy_device_list_init(&devices);
     if (devcount == 0) {
@@ -395,6 +408,17 @@ int main(int argc, char **argv)
         printf("%s: error querying devices.\n", cmdline_get_prg_name());
         status = EXIT_FAILURE;
         goto cleanup;
+    }
+
+    if (opt_joymap_file != NULL) {
+        printf("Loading joymap file %s.\n", opt_joymap_file);
+        joymap = joymap_load(opt_joymap_file);
+        if (joymap == NULL) {
+            fprintf(stderr, "Failed!\n");
+        } else {
+            printf("OK.\n");
+            joymap_free(joymap);
+        }
     }
 
     if (opt_poll_enable) {
@@ -424,6 +448,8 @@ int main(int argc, char **argv)
 
 cleanup:
     joy_device_list_free(devices);
+    joymap_module_shutdown();
     cmdline_free();
+    lib_free(opt_joymap_file);
     return status;
 }

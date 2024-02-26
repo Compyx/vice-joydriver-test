@@ -155,5 +155,34 @@ void lib_strrtrim(char *s)
 }
 
 
+const char *util_skip_whitespace(const char *s)
+{
+    if (s != NULL) {
+        while (*s != '\0' && isspace((unsigned char)*s)) {
+            s++;
+        }
+    }
+    return s;
+}
 
 
+#ifdef WINDOWS_COMPILE
+#define ARCHDEP_DIR_SEP_CHR '\\'
+#else
+#define ARCHDEP_DIR_SEP_CHR '/'
+#endif
+
+const char *lib_basename(const char *s)
+{
+    const char *t;
+
+    if (s == NULL || *s == '\0') {
+        return s;
+    }
+
+    t = s + strlen(s) - 1;
+    while (t >= s && *t != ARCHDEP_DIR_SEP_CHR) {
+        t--;
+    }
+    return t + 1;
+}
