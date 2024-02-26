@@ -180,47 +180,57 @@ static bool joymap_read_line(joymap_t *joymap)
     return true;
 }
 
-static char *get_quoted_arg(char **endptr)
+static bool get_quoted_arg(char **value, char **endptr)
 {
-    char *pos;
+    char *result;
+    char *rpos;
+    char *lpos;
     bool  escaped;
-
-    printf("lineptr = %s\n", lineptr);
 
     if (*lineptr != '"') {
         if (endptr != NULL) {
             *endptr = lineptr;
         }
-        parser_log_error("expected opening quote");
-        return NULL;
+        parser_log_error("expected opening double quote");
+        *value = NULL;
+        return false;
     }
 
+    result  = lib_malloc(linebuf_len - (size_t)(lineptr - linebuf) + 1u);
     escaped = false;
-    pos     = lineptr + 1;
-    while (*pos != '\0') {
-        if (*pos == '"') {
+    lpos    = lineptr + 1;
+    rpos    = result;
+    while (*lpos != '\0') {
+        if (*lpos == '"') {
             if (!escaped) {
                 /* end of argument */
                 if (endptr != NULL) {
-                    *endptr = pos;
+                    *endptr = lpos;
                 }
-                return lib_strndup(lineptr + 1, (size_t)(pos - lineptr - 1));
+                *rpos = '\0';
+                *value = result;
+                return true;
             } else {
-                pos++;
+                *rpos++ = *lpos;
+                escaped = false;
             }
-        } else if (*pos == '\\') {
+        } else if (*lpos == '\\') {
             if (escaped) {
-                pos++;
+                *rpos++ = *lpos;
+                escaped = false;
             } else {
                 escaped = true;
             }
         } else {
-            pos++;
+            *rpos++ = *lpos;
         }
+        lpos++;
     }
 
-    parser_log_error("unterminated string literal");
-    return NULL;
+    parser_log_error("expected closing double quote");
+    lib_free(result);
+    *value = NULL;
+    return false;
 }
 
 static bool get_int_arg(int *value, char **endptr)
@@ -316,6 +326,13 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
                 return false;
             }
             joymap->dev_product = (uint16_t)product;
+            break;
+
+        case VJM_KW_DEV_NAME:
+            if (!get_quoted_arg(&(joymap->dev_name), &endptr)) {
+                return false;
+            }
+            msg_debug("got device name '%s'\n", joymap->dev_name);
             break;
 
         default:
