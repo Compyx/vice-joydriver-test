@@ -1,13 +1,13 @@
 #CC = gcc
 #LD = $(CC)
-VPATH = shared
+VPATH = src/shared
 
 # -Wenum-int-mismatch appears to be a GCC 13 addition
 PROG_CFLAGS = -O0 -g -std=c99 \
 	      -Wall -Wextra -Wcast-qual -Wshadow -Wconversion -Wsign-compare \
 	      -Wsign-conversion \
 	      -Wformat -Wformat-security -Wmissing-prototypes -Wstrict-prototypes \
-	      -Ishared
+	      -Isrc -Isrc/shared
 
 ifeq ($(OS),Windows_NT)
 	UNAME_S := win32
@@ -20,7 +20,7 @@ ifeq ($(UNAME_S),Linux)
 	LD = $(CC)
 	PROG_CFLAGS += `pkg-config --cflags libevdev` -D_XOPEN_SOURCE=700 -DUNIX_COMPILE -DLINUX_COMPILE -Ilinux
 	PROG_LDFLAGS += `pkg-config --libs libevdev`
-	VPATH += :linux
+	VPATH += :src/linux
 endif
 
 ifeq ($(UNAME_S),NetBSD)
@@ -28,7 +28,7 @@ ifeq ($(UNAME_S),NetBSD)
 	LD = $(CC)
 	PROG_CFLAGS += -D_NETBSD_SOURCE -DUNIX_COMPILE -DNETBSD_COMPILE
 	PROG_LDFLAGS += -lusbhid
-	VPATH += :bsd
+	VPATH += :src/bsd
 endif
 
 ifeq ($(UNAME_S),FreeBSD)
@@ -36,7 +36,7 @@ ifeq ($(UNAME_S),FreeBSD)
 	LD = $(CC)
 	PROG_CFLAGS += -D_XOPEN_SOURCE=700 -DUNIX_COMPILE -DFREEBSD_COMPILE
 	PROG_LDFLAGS += -lusb -lusbhid
-	VPATH += :bsd
+	VPATH += :src/bsd
 endif
 
 ifeq ($(UNAME_S),win32)
@@ -44,7 +44,7 @@ ifeq ($(UNAME_S),win32)
 	LD = $(CC)
 	PROG_CFLAGS += -Wenum-int-mismatch -DWINDOWS_COMPILE
 	PROG_LDFLAGS += -ldinput8
-	VPATH += :win32
+	VPATH += :src/win32
 endif
 
 PROG = vice-joydriver-test
