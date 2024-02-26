@@ -1,7 +1,7 @@
 # VICE joystick driver testing
 
 Small test program to figure out how to query joysticks on various OSes for new
-joystick drivers for the non-SDL UIs.
+joystick drivers for the non-SDL UIs in [VICE](https://github.com/VICE-Team/svn-mirror/).
 Very much a work in progress.
 
 
@@ -106,3 +106,10 @@ the output of `lsusb`.
 | Saitek PLC Cyborg Force Rumble Pad                 | `06a3` | `ff0c`  |               |
 | Saitek PLC ST50 USB                                | `06a3` | `0168`  | An actual joystick, simple flightstick |
 | Sony Corp. Batoh Device / Playstation 3 Controller | `054c` | `0268`  |               |
+
+## Joymap files
+
+The joymap files will be split per device, unlike the current implementation of
+these files in VICE. The syntax will also be a bit different, making them much
+more human-readable and human-editable. See [this document](vjm-syntax.md) for
+the new syntax, again a work in progress and subject to change.
