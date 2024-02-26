@@ -54,9 +54,9 @@ all: $(PROG)
 
 cmdline.o: lib.o cmdline.h
 lib.o: lib.h
-joy.o: lib.o joyapi.o
-joyapi.o: lib.o joymap.o joyapi.h
-joymap.o: lib.o joymap.h
+joy.o: lib.o joyapi.o joyapi-types.h
+joyapi.o: lib.o joymap.o joyapi.h joyapi-types.h
+joymap.o: lib.o joymap.h joyapi-types.h
 main.o: cmdline.o joy.o joyapi.o lib.o
 
 $(PROG): $(OBJS)

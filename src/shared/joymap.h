@@ -4,27 +4,17 @@
  * \author  Bas Wassink <b.wassink@ziggo.nl>
  */
 
-#ifndef JOYMAP_H
-#define JOYMAP_H
+#ifndef VICE_JOYMAP_H
+#define VICE_JOYMAP_H
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "joyapi-types.h"
 
 #define VJM_VERSION_MAJOR   2
 #define VJM_VERSION_MINOR   0
 
-
-typedef struct joymap_s {
-    char     *path;
-    FILE     *fp;
-    int       ver_major;
-    int       ver_minor;
-    char     *dev_name;
-    uint16_t  dev_vendor;
-    uint16_t  dev_product;
-    uint16_t  dev_version;
-} joymap_t;
 
 void      joymap_module_init(void);
 void      joymap_module_shutdown(void);
