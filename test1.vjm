@@ -2,7 +2,7 @@
 vjm-version 2.0
 
 device-name     "hello \"quoted\" world!"
-device-vendor   0xabcd
+device-vendor   $abcd
 device-product  0xef01
 
 pin 1 "Button 1"

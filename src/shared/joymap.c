@@ -235,10 +235,29 @@ static bool get_quoted_arg(char **value, char **endptr)
 
 static bool get_int_arg(int *value, char **endptr)
 {
-    long result;
+    char *pos;
+    long  result;
+    int   base = 10;
+
+    pos = lineptr;
+    if (lineptr[0] == '0') {
+        if (lineptr[1] == 'b' || lineptr[1] == 'B') {
+            base = 2;
+            pos  = lineptr + 2;
+        } else if (lineptr[1] == 'x' || lineptr[1] == 'X') {
+            base = 16;
+            pos  = lineptr + 2;
+        }
+    } else if (lineptr[0] == '%') {
+        base = 2;
+        pos  = lineptr + 1;
+    } else if (lineptr[0] == '$') {
+        base = 16;
+        pos  = lineptr + 1;
+    }
 
     errno = 0;
-    result = strtol(lineptr, endptr, 0);
+    result = strtol(pos, endptr, base);
     if (errno != 0) {
         parser_log_error("failed to convert '%s' to long", lineptr);
         return false;
@@ -272,6 +291,10 @@ static bool get_vjm_version(joymap_t *joymap)
         parser_log_error("expected major version number");
         return false;
     }
+    if (major < 0) {
+        parser_log_error("major version number cannot be less than 0");
+        return false;
+    }
     if (*endptr != '.') {
         parser_log_error("expected dot after major version number");
         return false;
@@ -281,6 +304,11 @@ static bool get_vjm_version(joymap_t *joymap)
         parser_log_error("expected minor version number");
         return false;
     }
+    if (minor < 0) {
+        parser_log_error("minor version number cannot be less than 0");
+        return false;
+    }
+
     joymap->ver_major = major;
     joymap->ver_minor = minor;
     return true;
@@ -291,6 +319,7 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
 {
     int   vendor;
     int   product;
+    int   version;
     char *endptr;
 
     if (*lineptr == '\0') {
@@ -326,6 +355,17 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
                 return false;
             }
             joymap->dev_product = (uint16_t)product;
+            break;
+
+        case VJM_KW_DEV_VERSION:
+            if (!get_int_arg(&version, &endptr)) {
+                return false;
+            }
+            if (version < 0 || version > 0xffff) {
+                parser_log_error("illegal value %d for device version", version);
+                return false;
+            }
+            joymap->dev_version = (uint16_t)version;
             break;
 
         case VJM_KW_DEV_NAME:
@@ -382,6 +422,13 @@ static bool joymap_parse_line(joymap_t *joymap)
 }
 
 
+/** \brief  Load joymap from file
+ *
+ * \param[in]   path    path to joymap file
+ *
+ *
+ * \return  new joymap object or \c NULL on error
+ */
 joymap_t *joymap_load(const char *path)
 {
     joymap_t *joymap = NULL;
@@ -407,6 +454,24 @@ joymap_t *joymap_load(const char *path)
         joymap = NULL;
     }
     return joymap;
+}
+
+
+/** \brief  Dump joymap on stdout
+ *
+ * \param[in]   joymap  joymap
+ */
+void joymap_dump(joymap_t *joymap)
+{
+    printf("VJM version   : %d.%d\n", joymap->ver_major, joymap->ver_minor);
+    printf("device vendor : %04x\n", (unsigned int)joymap->dev_vendor);
+    printf("device product: %04x\n", (unsigned int)joymap->dev_product);
+    printf("device version: %04x\n", (unsigned int)joymap->dev_version);
+    if (joymap->dev_name != NULL) {
+        printf("device name   : \"%s\"\n", joymap->dev_name);
+    } else {
+        printf("device name   : (none)\n");
+    }
 }
 
 

@@ -417,6 +417,7 @@ int main(int argc, char **argv)
             fprintf(stderr, "Failed!\n");
         } else {
             printf("OK.\n");
+            joymap_dump(joymap);
             joymap_free(joymap);
         }
     }
