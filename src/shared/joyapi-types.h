@@ -194,14 +194,17 @@ typedef struct joy_driver_s {
 } joy_driver_t;
 
 typedef struct joymap_s {
-    char     *path;
-    FILE     *fp;
-    int       ver_major;
-    int       ver_minor;
-    char     *dev_name;
-    uint16_t  dev_vendor;
-    uint16_t  dev_product;
-    uint16_t  dev_version;
+    char          *path;
+    FILE          *fp;
+    int            ver_major;
+    int            ver_minor;
+    char          *dev_name;
+    uint16_t       dev_vendor;
+    uint16_t       dev_product;
+    uint16_t       dev_version;
+    joy_mapping_t *mappings;
+    uint32_t       mappings_size;
+    uint32_t       mappings_num;
 } joymap_t;
 
 #endif

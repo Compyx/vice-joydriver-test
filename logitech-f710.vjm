@@ -1,0 +1,15 @@
+# VICE joymap for the Logitech F710 controller
+
+vjm-version     2.0
+
+device-vendor   0x046d
+device-product  0xc21f
+device-version  0x0305
+
+# input mappings, host <-> guest
+# guest type    guest value host type   host name   host extra args
+map pin  1  axis    "ABS_Y"     negative
+map pin  2  axis    "ABS_Y"     positive
+map pin  4  axis    "ABS_X"     negative
+map pin  8  axis    "ABS_X"     positive
+map pin 16  button  "BTN_SOUTH"
