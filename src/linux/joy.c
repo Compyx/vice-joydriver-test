@@ -252,7 +252,13 @@ static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
                     axis->digital = true;
                 } else if (axis->flat == 0 && axis->fuzz == 0 && axis->resolution == 0) {
                     /* most likely digital */
+                    /* XXX: SDL uses this logic, but it doesn't work correctly
+                     *      for the analog triggers ABS_Z and ABS_RZ on my
+                     *      Logitech F710, so it's commented out for now.
+                     */
+#if 0
                     axis->digital = true;
+#endif
                 }
 
                 num++;
