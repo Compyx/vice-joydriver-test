@@ -52,19 +52,22 @@ Unsupported.
 The test driver program is currently called `vice-joydriver-test`, and supports
 a few command line options:
 
-| Option            | Argument     | Description                                      |
-| ----------------- | ------------ | ------------------------------------------------ |
-| `--help`          |              | Show help                                        |
-| `--version`       |              | Show program version                             |
-| `--verbose`       |              | Be verbose (limited support)                     |
-| `--debug`         |              | Enable debugging messages                        |
-| `--list-devices`  |              | Show list of joystick devices discovered         |
-| `--list-axes`     |              | List axes of device(s)                           |
-| `--list-buttons`  |              | List buttons of device(s))                       |
-| `--list-hats`     |              | List hats of device(s))                          |
-| `--poll`          |              | Poll device for events                           |
-| `--poll-interval` | milliseconds | Set interval between polls (default is 100 msec) |
+| Option                  | Argument     | Description                                      |
+| ----------------------- | ------------ | ------------------------------------------------ |
+| `-h`, `--help`          |              | Show help                                        |
+| `--version`             |              | Show program version                             |
+| `-v`, `--verbose`       |              | Be verbose (limited support)                     |
+| `-d`, `--debug`         |              | Enable debugging messages                        |
+| `--list-devices`        |              | Show list of joystick devices discovered         |
+| `--list-axes`           |              | List axes of device(s)                           |
+| `--list-buttons`        |              | List buttons of device(s))                       |
+| `--list-hats`           |              | List hats of device(s))                          |
+| `-p`, `--poll`          |              | Poll device for events                           |
+| `-i`, `--poll-interval` | milliseconds | Set interval between polls (default is 100 msec) |
+| `-m`, `--joymap`        | filename     | Parse joymap and apply to device being polled    |
 
+The `--joymap` option requires a device node/index to be present among the
+command line arguments so the joymap can be loaded for said device.
 
 #### Examples
 

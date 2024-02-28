@@ -649,12 +649,10 @@ joymap_t *joymap_load(joy_device_t *joydev, const char *path)
 {
     joymap_t *joymap = NULL;
 
-#if 0
     if (joydev == NULL) {
         msg_error("`joydev` argument cannot be NULL");
         return NULL;
     }
-#endif
 
     current_path = path;
 

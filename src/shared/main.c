@@ -301,6 +301,7 @@ static void sig_handler(int s)
 static int poll_loop(void)
 {
     joy_device_t    *joydev;
+    joymap_t        *joymap = NULL;
     struct timespec  spec;
 #ifndef WINDOWS_COMPILE
     struct sigaction action = { 0 };
@@ -330,6 +331,16 @@ static int poll_loop(void)
         return EXIT_FAILURE;
     }
 
+    if (opt_joymap_file != NULL) {
+        printf("Loading joymap file %s.\n", opt_joymap_file);
+        joymap = joymap_load(NULL, opt_joymap_file);
+        if (joymap == NULL) {
+            fprintf(stderr, "Failed!\n");
+        } else {
+            printf("OK.\n");
+            joymap_dump(joymap);
+        }
+    }
     /* amazingly nanosleep() is available on Windows (msys2) */
     spec.tv_sec  = opt_poll_interval / 1000;
     spec.tv_nsec = (opt_poll_interval % 1000) * 1000000;
@@ -358,6 +369,7 @@ static int poll_loop(void)
     }
 
 poll_exit:
+    joymap_free(joymap);
     joy_close(joydev);
     return status;
 }
@@ -365,8 +377,7 @@ poll_exit:
 
 int main(int argc, char **argv)
 {
-    joymap_t *joymap;
-    int       status = EXIT_SUCCESS;
+    int status = EXIT_SUCCESS;
 
     cmdline_init(PROGRAM_NAME, PROGRAM_VERSION);
     if (!cmdline_add_options(options)) {
@@ -400,6 +411,7 @@ int main(int argc, char **argv)
     devcount = joy_device_list_init(&devices);
     if (devcount == 0) {
         printf("No devices found.\n");
+        goto cleanup;
     } else if (devcount == 1) {
         printf("Found 1 device:\n");
     } else if (devcount > 1) {
@@ -410,20 +422,39 @@ int main(int argc, char **argv)
         goto cleanup;
     }
 
-    if (opt_joymap_file != NULL) {
-        printf("Loading joymap file %s.\n", opt_joymap_file);
-        joymap = joymap_load(NULL, opt_joymap_file);
+    if (opt_poll_enable) {
+        status = poll_loop();
+
+    } else if (!opt_poll_enable && opt_joymap_file != NULL) {
+        joy_device_t *joydev;
+        joymap_t     *joymap;
+
+        if (argcount == 0) {
+            fprintf(stderr,
+                    "%s: error: the `--joymap` option requires a device node "
+                    "to be given on the command line",
+                    cmdline_get_prg_name());
+            status = EXIT_FAILURE;
+            goto cleanup;
+        }
+        joydev = get_device(args[0]);
+        if (joydev == NULL) {
+            fprintf(stderr, "%s: error: could not find device '%s'.\n",
+                    cmdline_get_prg_name(), args[0]);
+            status = EXIT_FAILURE;
+            goto cleanup;
+        }
+
+        printf("Loading joymap file '%s'.\n", opt_joymap_file);
+        joymap = joymap_load(joydev, opt_joymap_file);
         if (joymap == NULL) {
-            fprintf(stderr, "Failed!\n");
+            fprintf(stderr, "Failed");
         } else {
-            printf("OK.\n");
+            printf("OK, dumping joymap:\n");
             joymap_dump(joymap);
             joymap_free(joymap);
         }
-    }
 
-    if (opt_poll_enable) {
-        status = poll_loop();
     } else if (opt_list_devices && devcount > 0) {
         list_devices();
     } else {
