@@ -13,3 +13,4 @@ map pin  2  axis    "ABS_Y"     positive
 map pin  4  axis    "ABS_X"     negative
 map pin  8  axis    "ABS_X"     positive
 map pin 16  button  "BTN_SOUTH"
+map pin 32  button  "BTN_NORTH"

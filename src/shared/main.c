@@ -333,7 +333,7 @@ static int poll_loop(void)
 
     if (opt_joymap_file != NULL) {
         printf("Loading joymap file %s.\n", opt_joymap_file);
-        joymap = joymap_load(NULL, opt_joymap_file);
+        joymap = joymap_load(joydev, opt_joymap_file);
         if (joymap == NULL) {
             fprintf(stderr, "Failed!\n");
         } else {

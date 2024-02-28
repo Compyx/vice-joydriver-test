@@ -13,6 +13,7 @@
 #include <ctype.h>
 #include <errno.h>
 
+#include "joyapi.h"
 #include "lib.h"
 
 #include "joymap.h"
@@ -22,11 +23,6 @@
 
 #define LINEBUF_INITIAL_SIZE    256
 
-/** \brief  Initial size of mappings array in a joymap object
- *
- * Number of elements initially allocated for the `mappings` array
- */
-#define MAPPINGS_INITIAL_SIZE   16
 
 typedef enum {
     VJM_KW_INVALID = -1,
@@ -139,6 +135,20 @@ static bool kw_is_direction(keyword_id_t kw)
         kw_is_axis_direction(kw);
 }
 
+/** \brief  Determine if pin number is valid
+ *
+ * Determine if \a pin is a directional pin or a fire[123] button pin.
+ *
+ * \param[in]   pin pin bit mask
+ *
+ * \return  \c true if \a pin is valid
+ */
+static bool pin_is_valid(int pin)
+{
+    return (bool)(pin == 1  || pin == 2  || pin == 4 || pin == 8 ||
+                  pin == 16 || pin == 32 || pin == 64);
+}
+
 /** \brief  Strip trailing whitespace from line buffer */
 static void rtrim_linebuf(void)
 {
@@ -202,9 +212,6 @@ static joymap_t *joymap_new(void)
     joymap->dev_vendor    = 0x0000;
     joymap->dev_product   = 0x0000;
     joymap->dev_version   = 0x0000;
-    joymap->mappings_size = MAPPINGS_INITIAL_SIZE;
-    joymap->mappings_num  = 0;
-    joymap->mappings      = lib_malloc(sizeof *(joymap->mappings) * MAPPINGS_INITIAL_SIZE);
 
     return joymap;
 }
@@ -212,13 +219,14 @@ static joymap_t *joymap_new(void)
 
 void joymap_free(joymap_t *joymap)
 {
-    if (joymap->fp != NULL) {
-        fclose(joymap->fp);
+    if (joymap != NULL) {
+        if (joymap->fp != NULL) {
+            fclose(joymap->fp);
+        }
+        lib_free(joymap->path);
+        lib_free(joymap->dev_name);
+        lib_free(joymap);
     }
-    lib_free(joymap->path);
-    lib_free(joymap->dev_name);
-    lib_free(joymap->mappings);
-    lib_free(joymap);
 }
 
 
@@ -444,13 +452,17 @@ static bool handle_pin_mapping(joymap_t *joymap)
     keyword_id_t   input_direction = VJM_KW_NONE;
     char          *input_name = NULL;
     char          *endptr;
-    joy_mapping_t *mapping;
+    joy_button_t  *button;
 
     /* pin number */
     skip_whitespace();
     if (!get_int_arg(&pin, &endptr)) {
         /* TODO: check for up, down, left, right, fire[1-3] */
         parser_log_error("expected joystick pin number");
+        return false;
+    }
+    if (!pin_is_valid(pin)) {
+        parser_log_error("invalid pin number %d", pin);
         return false;
     }
     lineptr = endptr;
@@ -485,18 +497,33 @@ static bool handle_pin_mapping(joymap_t *joymap)
         }
     }
 
+    switch (input_type) {
+        case VJM_KW_AXIS:
+            parser_log_warning("TODO: mapping pin to axis\n");
+            break;
 
-    /* allocate memory for mapping, if not already available */
-    if (joymap->mappings_num == joymap->mappings_size) {
-        joymap->mappings_size *= 2u;
-        joymap->mappings = lib_realloc(joymap->mappings,
-                                       sizeof *(joymap->mappings) * joymap->mappings_size);
+        case VJM_KW_BUTTON:
+            button = joy_button_from_name(joymap->joydev, input_name);
+            if (button == NULL) {
+                parser_log_error("failed to find button '%s'", input_name);
+                lib_free(input_name);
+                return false;
+            }
+            button->mapping.action     = JOY_ACTION_JOYSTICK;
+            button->mapping.target.pin = pin;
+            break;
+
+        case VJM_KW_HAT:
+            parser_log_warning("TODO: mapping pin to hat\n");
+            break;
+
+        default:
+            parser_log_error("unhandled input type %d!\n", (int)input_type);
+            break;
     }
 
-    /* store mapping */
-    mapping = &(joymap->mappings[joymap->mappings_num++]);
-    mapping->action     = JOY_ACTION_JOYSTICK;
-    mapping->target.pin = pin;
+
+
 
     printf("got pin number %d, input type %s, input name %s, input direction %s\n",
            pin, keywords[input_type], input_name, keywords[input_direction]);
