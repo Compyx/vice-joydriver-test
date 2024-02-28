@@ -40,7 +40,7 @@
 #define JOY_CAPS_JOYSTICK   0x08
 
 /** \brief  Types of mapping actions  */
-typedef enum joy_action_s {
+typedef enum joy_action_e {
     JOY_ACTION_NONE,            /**< no mapping (ignore input) */
     JOY_ACTION_JOYSTICK,        /**< joystick pin */
     JOY_ACTION_KEYBOARD,        /**< key stroke */
@@ -48,6 +48,13 @@ typedef enum joy_action_s {
     JOY_ACTION_UI_ACTION,       /**< trigger UI action */
     JOY_ACTION_UI_ACTIVATE      /**< activate menu (SDL) or settings dialog (Gtk3) */
 } joy_action_t;
+
+typedef enum joy_input_e {
+    JOY_INPUT_INVALID = -1,
+    JOY_INPUT_AXIS,
+    JOY_INPUT_BUTTON,
+    JOY_INPUT_HAT
+} joy_input_t ;
 
 /** \brief  Mapping of host input to emulated keyboard */
 typedef struct joy_key_map_s {
@@ -194,6 +201,7 @@ typedef struct joy_driver_s {
 } joy_driver_t;
 
 typedef struct joymap_s {
+    joy_device_t  *joydev;
     char          *path;
     FILE          *fp;
     int            ver_major;

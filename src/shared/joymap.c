@@ -30,38 +30,73 @@
 
 typedef enum {
     VJM_KW_INVALID = -1,
-    VJM_KW_VJM_VERSION,
-    VJM_KW_DEVICE_NAME,
-    VJM_KW_DEVICE_VENDOR,
-    VJM_KW_DEVICE_PRODUCT,
-    VJM_KW_DEVICE_VERSION,
-    VJM_KW_MAP,
-    VJM_KW_PIN,
-    VJM_KW_POT,
-    VJM_KW_KEY,
-    VJM_KW_ACTION,
-    VJM_KW_NONE,
+
+    VJM_KW_ACTION = 0,
     VJM_KW_AXIS,
     VJM_KW_BUTTON,
+    VJM_KW_DEVICE_NAME,
+    VJM_KW_DEVICE_PRODUCT,
+    VJM_KW_DEVICE_VENDOR,
+    VJM_KW_DEVICE_VERSION,
+    VJM_KW_DOWN,
+    VJM_KW_EAST,
+    VJM_KW_FIRE1,
+    VJM_KW_FIRE2,
+    VJM_KW_FIRE3,
     VJM_KW_HAT,
+    VJM_KW_KEY,
+    VJM_KW_LEFT,
+    VJM_KW_MAP,
+    VJM_KW_NEGATIVE,
+    VJM_KW_NONE,
     VJM_KW_NORTH,
     VJM_KW_NORTHEAST,
-    VJM_KW_EAST,
-    VJM_KW_SOUTHEAST,
+    VJM_KW_NORTHWEST,
+    VJM_KW_PIN,
+    VJM_KW_POSITIVE,
+    VJM_KW_POT,
+    VJM_KW_RIGHT,
     VJM_KW_SOUTH,
+    VJM_KW_SOUTHEAST,
     VJM_KW_SOUTHWEST,
+    VJM_KW_UP,
+    VJM_KW_VJM_VERSION,
     VJM_KW_WEST,
-    VJM_KW_NORTHWEST
 } keyword_id_t;
 
 
 static const char *keywords[] = {
-    "vjm-version",
-    "device-name", "device-vendor", "device-product", "device-version",
+    "action",
+    "axis",
+    "button",
+    "device-name",
+    "device-product",
+    "device-vendor",
+    "device-version",
+    "down",
+    "east",
+    "fire1",
+    "fire2",
+    "fire3",
+    "hat",
+    "key",
+    "left",
     "map",
-    "pin", "pot", "key", "action", "none",
-    "axis", "button", "hat",
-    "north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"
+    "negative",
+    "none",
+    "north",
+    "northeast",
+    "northwest",
+    "pin",
+    "positive",
+    "pot",
+    "right",
+    "south",
+    "southeast",
+    "southwest",
+    "up",
+    "vjm-version",
+    "west",
 };
 
 
@@ -72,6 +107,37 @@ static int     linenum;
 char          *lineptr;
 const char    *current_path;
 
+
+static bool kw_is_input_type(keyword_id_t kw)
+{
+    return (bool)(kw == VJM_KW_AXIS || kw == VJM_KW_BUTTON || kw == VJM_KW_HAT);
+}
+
+
+static bool kw_is_hat_direction(keyword_id_t kw)
+{
+    return (bool)(kw == VJM_KW_NORTH || kw == VJM_KW_NORTHEAST ||
+                  kw == VJM_KW_EAST  || kw == VJM_KW_SOUTHEAST ||
+                  kw == VJM_KW_SOUTH || kw == VJM_KW_SOUTHWEST ||
+                  kw == VJM_KW_WEST  || kw == VJM_KW_NORTHWEST);
+}
+
+static bool kw_is_joystick_direction(keyword_id_t kw)
+{
+    return (bool)(kw == VJM_KW_UP   || kw == VJM_KW_DOWN ||
+                  kw == VJM_KW_LEFT || kw == VJM_KW_RIGHT);
+}
+
+static bool kw_is_axis_direction(keyword_id_t kw)
+{
+    return (bool)(kw == VJM_KW_NEGATIVE || kw == VJM_KW_POSITIVE);
+}
+
+static bool kw_is_direction(keyword_id_t kw)
+{
+    return kw_is_hat_direction(kw) || kw_is_joystick_direction(kw) ||
+        kw_is_axis_direction(kw);
+}
 
 /** \brief  Strip trailing whitespace from line buffer */
 static void rtrim_linebuf(void)
@@ -127,9 +193,10 @@ static joymap_t *joymap_new(void)
 {
     joymap_t *joymap = lib_malloc(sizeof *joymap);
 
-    joymap->path        = NULL;
-    joymap->fp          = NULL;
-    joymap->ver_major   = 0;
+    joymap->joydev        = NULL;
+    joymap->path          = NULL;
+    joymap->fp            = NULL;
+    joymap->ver_major     = 0;
     joymap->ver_minor     = 0;
     joymap->dev_name      = NULL;
     joymap->dev_vendor    = 0x0000;
@@ -211,8 +278,13 @@ static keyword_id_t get_keyword(char **endptr)
     keyword_id_t  id  = VJM_KW_INVALID;
     char         *pos = lineptr;
 
-    /* keyword  = '[a-zA-Z\-]' */
-    while (*pos != '\0' && (isalpha((unsigned char)*pos) || *pos == '-')) {
+    /* keyword  = '[a-z][a-z0-9[-]'+ */
+    if (!islower((unsigned char)*pos)) {
+        return false;
+    }
+    pos++;
+    while (*pos != '\0' &&
+            (islower((unsigned char)*pos) || isdigit((unsigned char)*pos) || *pos == '-')) {
         pos++;
     }
     if (pos > lineptr) {
@@ -256,7 +328,7 @@ static bool get_quoted_arg(char **value, char **endptr)
             if (!escaped) {
                 /* end of argument */
                 if (endptr != NULL) {
-                    *endptr = lpos;
+                    *endptr = lpos + 1;
                 }
                 *rpos = '\0';
                 *value = result;
@@ -365,6 +437,99 @@ static bool get_vjm_version(joymap_t *joymap)
     return true;
 }
 
+static bool handle_pin_mapping(joymap_t *joymap)
+{
+    int            pin;
+    keyword_id_t   input_type;
+    keyword_id_t   input_direction = VJM_KW_NONE;
+    char          *input_name = NULL;
+    char          *endptr;
+    joy_mapping_t *mapping;
+
+    /* pin number */
+    skip_whitespace();
+    if (!get_int_arg(&pin, &endptr)) {
+        /* TODO: check for up, down, left, right, fire[1-3] */
+        parser_log_error("expected joystick pin number");
+        return false;
+    }
+    lineptr = endptr;
+
+    /* input type */
+    skip_whitespace();
+    input_type = get_keyword(&endptr);
+    if (!kw_is_input_type(input_type)) {
+        parser_log_error("expected input type ('axis', 'button' or 'hat')");
+        return false;
+    }
+
+    /* input name */
+    lineptr = endptr;
+    skip_whitespace();
+    if (!get_quoted_arg(&input_name, &endptr)) {
+        parser_log_error("expected input name");
+        return false;
+    }
+    lineptr = endptr;
+    msg_debug("line after input name: '%s'\n", lineptr);
+
+    if (input_type != VJM_KW_BUTTON) {
+        /* axes and hats require a direction argument */
+        skip_whitespace();
+        input_direction = get_keyword(&endptr);
+        if (!kw_is_direction(input_direction)) {
+            parser_log_error("expected direction argument for %s input",
+                             keywords[input_type]);
+            lib_free(input_name);
+            return false;
+        }
+    }
+
+
+    /* allocate memory for mapping, if not already available */
+    if (joymap->mappings_num == joymap->mappings_size) {
+        joymap->mappings_size *= 2u;
+        joymap->mappings = lib_realloc(joymap->mappings,
+                                       sizeof *(joymap->mappings) * joymap->mappings_size);
+    }
+
+    /* store mapping */
+    mapping = &(joymap->mappings[joymap->mappings_num++]);
+    mapping->action     = JOY_ACTION_JOYSTICK;
+    mapping->target.pin = pin;
+
+    printf("got pin number %d, input type %s, input name %s, input direction %s\n",
+           pin, keywords[input_type], input_name, keywords[input_direction]);
+    lib_free(input_name);
+    return true;
+}
+
+static bool handle_mapping(joymap_t *joymap)
+{
+    char *endptr;
+    bool  result = true;
+
+    skip_whitespace();
+
+    switch (get_keyword(&endptr)) {
+        case VJM_KW_PIN:
+            /* "pin <pin#> <input-type> <input-name> [<input-args>]" */
+            lineptr = endptr;
+            result = handle_pin_mapping(joymap);
+            break;
+
+        case VJM_KW_POT:
+            parser_log_warning("TODO: handle 'pot'");
+            break;
+
+        default:
+            parser_log_error("expected either 'pin', 'pot', 'key' or 'action'");
+            result = false;
+            break;
+    }
+
+    return result;
+}
 
 static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
 {
@@ -372,6 +537,7 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
     int   product;
     int   version;
     char *endptr;
+    bool  result = true;
 
     if (*lineptr == '\0') {
         parser_log_error("missing data after keyword '%s'", keywords[kw]);
@@ -381,60 +547,65 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
     switch (kw) {
         case VJM_KW_VJM_VERSION:
             if (!get_vjm_version(joymap)) {
-                return false;
+                result = false;
+            } else {
+                msg_debug("VJM version: %d.%d\n", joymap->ver_major, joymap->ver_minor);
             }
-            msg_debug("VJM version: %d.%d\n", joymap->ver_major, joymap->ver_minor);
             break;
 
         case VJM_KW_DEVICE_VENDOR:
             if (!get_int_arg(&vendor, &endptr)) {
-                return false;
-            }
-            if (vendor < 0 || vendor > 0xffff) {
+                result =  false;
+            } else if (vendor < 0 || vendor > 0xffff) {
                 parser_log_error("illegal value %d for device vendor ID", vendor);
-                return false;
+                result = false;
+            } else {
+                joymap->dev_vendor = (uint16_t)vendor;
             }
-            joymap->dev_vendor = (uint16_t)vendor;
             break;
 
         case VJM_KW_DEVICE_PRODUCT:
             if (!get_int_arg(&product, &endptr)) {
-                return false;
-            }
-            if (product < 0 || product > 0xffff) {
+                result = false;
+            } else if (product < 0 || product > 0xffff) {
                 parser_log_error("illegal value %d for device product ID", product);
-                return false;
+                result = false;
+            } else {
+                joymap->dev_product = (uint16_t)product;
             }
-            joymap->dev_product = (uint16_t)product;
             break;
 
         case VJM_KW_DEVICE_VERSION:
             if (!get_int_arg(&version, &endptr)) {
-                return false;
-            }
-            if (version < 0 || version > 0xffff) {
+                result = false;
+            } else if (version < 0 || version > 0xffff) {
                 parser_log_error("illegal value %d for device version", version);
-                return false;
+                result = false;
+            } else {
+                joymap->dev_version = (uint16_t)version;
             }
-            joymap->dev_version = (uint16_t)version;
             break;
 
         case VJM_KW_DEVICE_NAME:
             if (!get_quoted_arg(&(joymap->dev_name), &endptr)) {
-                return false;
+                result = false;
+            } else {
+                msg_debug("got device name '%s'\n", joymap->dev_name);
             }
-            msg_debug("got device name '%s'\n", joymap->dev_name);
             break;
 
         case VJM_KW_MAP:
-            msg_debug("got keyword `map`: TODO\n");
+            if (!handle_mapping(joymap)) {
+                result = false;
+            }
             break;
 
         default:
-            parser_log_warning("unexpected keyword '%s'", keywords[kw]);
+            parser_log_error("unexpected keyword '%s'", keywords[kw]);
+            result = false;
             break;
     }
-    return true;
+    return result;
 }
 
 
@@ -468,14 +639,22 @@ static bool joymap_parse_line(joymap_t *joymap)
 
 /** \brief  Load joymap from file
  *
+ * \param[in]   joydev  joystick device
  * \param[in]   path    path to joymap file
  *
  *
  * \return  new joymap object or \c NULL on error
  */
-joymap_t *joymap_load(const char *path)
+joymap_t *joymap_load(joy_device_t *joydev, const char *path)
 {
     joymap_t *joymap = NULL;
+
+#if 0
+    if (joydev == NULL) {
+        msg_error("`joydev` argument cannot be NULL");
+        return NULL;
+    }
+#endif
 
     current_path = path;
 
@@ -484,6 +663,7 @@ joymap_t *joymap_load(const char *path)
     if (joymap == NULL) {
         return NULL;
     }
+    joymap->joydev = joydev;
 
     errno   = 0;
     linenum = 0;
