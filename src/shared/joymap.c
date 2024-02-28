@@ -452,7 +452,9 @@ static bool handle_pin_mapping(joymap_t *joymap)
     keyword_id_t   input_direction = VJM_KW_NONE;
     char          *input_name = NULL;
     char          *endptr;
+    joy_axis_t    *axis;
     joy_button_t  *button;
+    joy_mapping_t *mapping;
 
     /* pin number */
     skip_whitespace();
@@ -499,7 +501,28 @@ static bool handle_pin_mapping(joymap_t *joymap)
 
     switch (input_type) {
         case VJM_KW_AXIS:
-            parser_log_warning("TODO: mapping pin to axis\n");
+            if (!kw_is_axis_direction(input_direction)) {
+                parser_log_error("invalid axis direction, got '%s', expected "
+                                 "'negative' or 'positive'",
+                                 keywords[input_direction]);
+                lib_free(input_name);
+                return false;
+            }
+            axis = joy_axis_from_name(joymap->joydev, input_name);
+            if (axis == NULL) {
+                parser_log_error("failed to find axis '%s'", input_name);
+                lib_free(input_name);
+                return false;
+            }
+
+            /* select negative or positive mapping */
+            if (input_direction == VJM_KW_NEGATIVE) {
+                mapping = &(axis->mapping.pin[JOY_AXIS_IDX_NEG]);
+            } else {
+                mapping = &(axis->mapping.pin[JOY_AXIS_IDX_POS]);
+            }
+            mapping->action     = JOY_ACTION_JOYSTICK;
+            mapping->target.pin = pin;
             break;
 
         case VJM_KW_BUTTON:
@@ -521,9 +544,6 @@ static bool handle_pin_mapping(joymap_t *joymap)
             parser_log_error("unhandled input type %d!\n", (int)input_type);
             break;
     }
-
-
-
 
     printf("got pin number %d, input type %s, input name %s, input direction %s\n",
            pin, keywords[input_type], input_name, keywords[input_direction]);
