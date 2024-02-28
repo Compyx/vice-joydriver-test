@@ -371,11 +371,32 @@ joy_axis_t *joy_axis_from_code(joy_device_t *joydev, uint16_t code)
     return NULL;
 }
 
+joy_axis_t *joy_axis_from_name(joy_device_t *joydev, const char *name)
+{
+    for (uint32_t a = 0; a < joydev->num_axes; a++) {
+        if (strcmp(joydev->axes[a].name, name) == 0) {
+            return &(joydev->axes[a]);
+        }
+    }
+    return NULL;
+}
+
 
 joy_button_t *joy_button_from_code(joy_device_t *joydev, uint16_t code)
 {
     for (uint32_t b = 0; b < joydev->num_buttons; b++) {
         if (joydev->buttons[b].code == code) {
+            return &(joydev->buttons[b]);
+        }
+    }
+    return NULL;
+}
+
+
+joy_button_t *joy_button_from_name(joy_device_t *joydev, const char *name)
+{
+    for (uint32_t b = 0; b < joydev->num_buttons; b++) {
+        if (strcmp(joydev->buttons[b].name, name) == 0) {
             return &(joydev->buttons[b]);
         }
     }
@@ -394,6 +415,15 @@ joy_hat_t *joy_hat_from_code(joy_device_t *joydev, uint16_t code)
 }
 
 
+joy_hat_t *joy_hat_from_name(joy_device_t *joydev, const char *name)
+{
+    for (uint32_t h = 0; h < joydev->num_hats; h++) {
+        if (strcmp(joydev->hats[h].name, name) == 0) {
+            return &(joydev->hats[h]);
+        }
+    }
+    return NULL;
+}
 
 
 /** \brief  Perform joystick event

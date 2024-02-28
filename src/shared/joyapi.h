@@ -46,8 +46,11 @@ void          joy_button_init     (joy_button_t      *button);
 void          joy_hat_init        (joy_hat_t         *hat);
 
 joy_axis_t   *joy_axis_from_code  (joy_device_t *joydev, uint16_t code);
+joy_axis_t   *joy_axis_from_name  (joy_device_t *joydev, const char *name);
 joy_button_t *joy_button_from_code(joy_device_t *joydev, uint16_t code);
+joy_button_t *joy_button_from_name(joy_device_t *joydev, const char *name);
 joy_hat_t    *joy_hat_from_code   (joy_device_t *joydev, uint16_t code);
+joy_hat_t    *joy_hat_from_name   (joy_device_t *joydev, const char *name);
 
 void          joy_axis_event  (joy_device_t *joydev, joy_axis_t   *axis,   joystick_axis_value_t value);
 void          joy_button_event(joy_device_t *joydev, joy_button_t *button, int32_t value);
