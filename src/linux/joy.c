@@ -743,40 +743,36 @@ bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
             hat = &(joydev->hats[0]);
 
             /* negative direction of X axis */
-            mapping = &(hat->x.mapping.pin[JOY_AXIS_IDX_NEG]);
-            mapping->action     = JOY_ACTION_JOYSTICK;
-            mapping->target.pin = JOYSTICK_DIRECTION_LEFT;
+            hat->x.negative_mapping.action     = JOY_ACTION_JOYSTICK;
+            hat->x.negative_mapping.target.pin = JOYSTICK_DIRECTION_LEFT;
             /* positive direction of X axis */
-            mapping = &(hat->x.mapping.pin[JOY_AXIS_IDX_POS]);
-            mapping->action     = JOY_ACTION_JOYSTICK;
-            mapping->target.pin = JOYSTICK_DIRECTION_RIGHT;
+            hat->x.positive_mapping.action     = JOY_ACTION_JOYSTICK;
+            hat->x.positive_mapping.target.pin = JOYSTICK_DIRECTION_RIGHT;
 
             /* negative direction of Y axis */
-            mapping = &(hat->y.mapping.pin[JOY_AXIS_IDX_NEG]);
-            mapping->action     = JOY_ACTION_JOYSTICK;
-            mapping->target.pin = JOYSTICK_DIRECTION_UP;
+            hat->y.negative_mapping.action     = JOY_ACTION_JOYSTICK;
+            hat->y.negative_mapping.target.pin = JOYSTICK_DIRECTION_UP;
             /* positive direction of Y axis */
-            mapping = &(hat->y.mapping.pin[JOY_AXIS_IDX_POS]);
-            mapping->action     = JOY_ACTION_JOYSTICK;
-            mapping->target.pin = JOYSTICK_DIRECTION_DOWN;
+            hat->y.positive_mapping.action     = JOY_ACTION_JOYSTICK;
+            hat->y.positive_mapping.target.pin = JOYSTICK_DIRECTION_DOWN;
         } else if (joydev->num_axes >= 2u) {
             /* assume first axis to be X axis */
             axis = &(joydev->axes[0]);
             /* negative -> left */
-            axis->mapping.pin[JOY_AXIS_IDX_NEG].action     = JOY_ACTION_JOYSTICK;
-            axis->mapping.pin[JOY_AXIS_IDX_NEG].target.pin = JOYSTICK_DIRECTION_LEFT;
+            axis->negative_mapping.action     = JOY_ACTION_JOYSTICK;
+            axis->positive_mapping.target.pin = JOYSTICK_DIRECTION_LEFT;
             /* positive -> right */
-            axis->mapping.pin[JOY_AXIS_IDX_POS].action     = JOY_ACTION_JOYSTICK;
-            axis->mapping.pin[JOY_AXIS_IDX_POS].target.pin = JOYSTICK_DIRECTION_RIGHT;
+            axis->positive_mapping.action     = JOY_ACTION_JOYSTICK;
+            axis->positive_mapping.target.pin = JOYSTICK_DIRECTION_RIGHT;
 
             /* second axis: X axis */
             axis = &(joydev->axes[1]);
             /* negative -> up */
-            axis->mapping.pin[JOY_AXIS_IDX_NEG].action     = JOY_ACTION_JOYSTICK;
-            axis->mapping.pin[JOY_AXIS_IDX_NEG].target.pin = JOYSTICK_DIRECTION_UP;
+            axis->negative_mapping.action     = JOY_ACTION_JOYSTICK;
+            axis->negative_mapping.target.pin = JOYSTICK_DIRECTION_UP;
             /* positive -> down */
-            axis->mapping.pin[JOY_AXIS_IDX_POS].action     = JOY_ACTION_JOYSTICK;
-            axis->mapping.pin[JOY_AXIS_IDX_POS].target.pin = JOYSTICK_DIRECTION_DOWN;
+            axis->positive_mapping.action     = JOY_ACTION_JOYSTICK;
+            axis->positive_mapping.target.pin = JOYSTICK_DIRECTION_DOWN;
         }
 
         button  = &(joydev->buttons[0]);

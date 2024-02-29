@@ -517,9 +517,9 @@ static bool handle_pin_mapping(joymap_t *joymap)
 
             /* select negative or positive mapping */
             if (input_direction == VJM_KW_NEGATIVE) {
-                mapping = &(axis->mapping.pin[JOY_AXIS_IDX_NEG]);
+                mapping = &(axis->negative_mapping);
             } else {
-                mapping = &(axis->mapping.pin[JOY_AXIS_IDX_POS]);
+                mapping = &(axis->positive_mapping);
             }
             mapping->action     = JOY_ACTION_JOYSTICK;
             mapping->target.pin = pin;

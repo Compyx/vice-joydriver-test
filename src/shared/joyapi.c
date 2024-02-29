@@ -325,8 +325,9 @@ void joy_axis_init(joy_axis_t *axis)
     axis->resolution  = 1;
     axis->granularity = 1;
     axis->digital     = false;
-    joy_mapping_init(&(axis->mapping.pin[JOY_AXIS_IDX_NEG]));
-    joy_mapping_init(&(axis->mapping.pin[JOY_AXIS_IDX_POS]));
+    joy_mapping_init(&(axis->negative_mapping));
+    joy_mapping_init(&(axis->positive_mapping));
+    joy_mapping_init(&(axis->pot_mapping));
 }
 
 
@@ -476,10 +477,34 @@ static void joy_perform_event(joy_device_t  *joydev,
  */
 void joy_axis_event(joy_device_t *joydev, joy_axis_t *axis, joystick_axis_value_t value)
 {
+    joystick_axis_value_t prev;
+
     if (axis == NULL) {
         msg_error("`axis` is NULL\n");
         return;
     }
+
+    prev = (joystick_axis_value_t)axis->prev;
+    if (value == prev) {
+        return;
+    }
+
+    /* release directions first */
+    if (prev == JOY_AXIS_NEGATIVE) {
+        joy_perform_event(joydev, &(axis->negative_mapping), 0);
+    } else if (prev == JOY_AXIS_POSITIVE) {
+        joy_perform_event(joydev, &(axis->positive_mapping), 0);
+    }
+
+    /* new directions */
+    if (value == JOY_AXIS_NEGATIVE) {
+        joy_perform_event(joydev, &(axis->negative_mapping), 1);
+    } else if (value == JOY_AXIS_POSITIVE) {
+        joy_perform_event(joydev, &(axis->positive_mapping), 1);
+    }
+
+    /* update previous */
+    axis->prev = (int32_t)value;
 
     printf("axis event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
            joydev->name, axis->name, axis->code, value);

@@ -69,10 +69,6 @@ typedef enum joy_pot_axis_s {
     JOY_POTY        /**< POTY register */
 } joy_pot_axis_t;
 
-#define JOY_AXIS_IDX_NEG    0   /**< negative axis index */
-#define JOY_AXIS_IDX_POS    1   /**< positive axis index */
-#define JOY_AXIS_IDX_NUM    2   /**< number of axis indexes */
-
 /** \brief  Calibration data for a "normal" axis
  *
  * Calibration data for an axis that has a neutral position in the middle of
@@ -148,10 +144,9 @@ typedef struct joy_axis_s {
     int32_t        resolution;  /**< resolution of axis (units per mm) */
     uint32_t       granularity; /**< granularity of reported values (Windows) */
     bool           digital;     /**< axis is digital */
-    union {
-        joy_mapping_t pin[JOY_AXIS_IDX_NUM];
-        joy_mapping_t pot;
-    } mapping;
+    joy_mapping_t  negative_mapping;    /**< axis negative direction pin mapping */
+    joy_mapping_t  positive_mapping;    /**< axis positive direction pin mapping */
+    joy_mapping_t  pot_mapping;         /**< axis to POT mapping */
 } joy_axis_t;
 
 /** \brief  Joystick hat object
