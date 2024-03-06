@@ -5,11 +5,12 @@ joystick drivers for the non-SDL UIs in [VICE](https://github.com/VICE-Team/svn-
 Very much a work in progress.
 
 
-## Current status (2024-02-20)
+## Current status (2024-03-06)
 
 ### Linux
 
-Scanning devices for capabilities works, polling works.
+Scanning devices for capabilities works, polling works. Button and axis events
+are passed to the generic joystick code.
 
 ## BSD
 
@@ -17,11 +18,12 @@ Scanning devices for capabilities works. No polling yet.
 
 ## Windows
 
-Scanning devices for capabilities works, polling works.
+Scanning devices for capabilities works, polling works. Button, axis and hat (POV)
+events are passed to the generic joystick code.
 
 ## MacOS
 
-Unsupported.
+Unsupported due to budgetary constraints.
 
 
 ### Prerequisites:
@@ -68,6 +70,9 @@ a few command line options:
 
 The `--joymap` option requires a device node/index to be present among the
 command line arguments so the joymap can be loaded for said device.
+
+Polling (`--poll`) can be stopped by pressing Ctrl+C. Extra information can be
+printed by passing the `--verbose` and `--debug` flags.
 
 #### Examples
 
