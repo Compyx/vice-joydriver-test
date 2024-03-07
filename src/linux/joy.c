@@ -582,16 +582,14 @@ static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
                     event->input_event_usec,
                     libevdev_event_type_get_name(event->type));
     } else {
-        if (verbose) {
-            printf("event: time %ld.%06ld, type %d (%s), code %04x (%s), value %d\n",
-                   event->input_event_sec,
-                   event->input_event_usec,
-                   event->type,
-                   libevdev_event_type_get_name(event->type),
-                   (unsigned int)event->code,
-                   libevdev_event_code_get_name(event->type, event->code),
-                   event->value);
-        }
+        msg_verbose("event: time %ld.%06ld, type %d (%s), code %04x (%s), value %d\n",
+                    event->input_event_sec,
+                    event->input_event_usec,
+                    event->type,
+                    libevdev_event_type_get_name(event->type),
+                    (unsigned int)event->code,
+                    libevdev_event_code_get_name(event->type, event->code),
+                    event->value);
 
         if (event->type == EV_KEY && IS_BUTTON(event->code)) {
             joy_button_event(joydev,
@@ -686,18 +684,12 @@ static bool joydev_poll(joy_device_t *joydev)
     while (libevdev_has_event_pending(evdev)) {
         rc = libevdev_next_event(evdev, flags, &event);
         if (rc == LIBEVDEV_READ_STATUS_SYNC) {
-            if (verbose) {
-                printf("=== dropped ===\n");
-            }
+            msg_debug("=== DROPPED ===\n");
             while (rc == LIBEVDEV_READ_STATUS_SYNC) {
-                if (verbose) {
-                    printf("sync");
-                }
+                msg_debug("=== SYNCING ===\n");
                 rc = libevdev_next_event(evdev, LIBEVDEV_READ_FLAG_SYNC, &event);
             }
-            if (verbose) {
-                printf("=== resynced ===\n");
-            }
+            msg_debug("=== RESYNCED ===\n");
         } else if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
             if (event.type == EV_ABS || event.type == EV_KEY) {
                 poll_dispatch_event(joydev, &event);

@@ -484,6 +484,9 @@ void joy_axis_event(joy_device_t *joydev, joy_axis_t *axis, joystick_axis_value_
         return;
     }
 
+    msg_verbose("axis event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
+                joydev->name, axis->name, axis->code, value);
+
     prev = (joystick_axis_value_t)axis->prev;
     if (value == prev) {
         return;
@@ -505,9 +508,6 @@ void joy_axis_event(joy_device_t *joydev, joy_axis_t *axis, joystick_axis_value_
 
     /* update previous */
     axis->prev = (int32_t)value;
-
-    printf("axis event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
-           joydev->name, axis->name, axis->code, value);
 }
 
 
@@ -524,9 +524,8 @@ void joy_button_event(joy_device_t *joydev, joy_button_t *button, int32_t value)
         return;
     }
 
-    printf("button event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
-           joydev->name, button->name, button->code, value);
-
+    msg_verbose("button event: %s: %s (%"PRIx16"), value: %"PRId32"\n",
+                joydev->name, button->name, button->code, value);
     joy_perform_event(joydev, &(button->mapping), value);
 
 }
@@ -545,12 +544,11 @@ void joy_hat_event(joy_device_t *joydev, joy_hat_t *hat, int32_t value)
         return;
     }
 
-    printf("hat event: %s: %s (%"PRIx16"), value: %"PRId32": %s\n",
-           joydev->name, hat->name, hat->code, value,
-           joy_direction_name((uint32_t)value));
+    msg_verbose("hat event: %s: %s (%"PRIx16"), value: %"PRId32": %s\n",
+                joydev->name, hat->name, hat->code, value,
+                joy_direction_name((uint32_t)value));
 
     /* TODO: latch/unlatch pins */
-
     joy_perform_event(joydev, &(hat->mapping), value);
 }
 
