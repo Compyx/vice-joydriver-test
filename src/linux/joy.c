@@ -93,6 +93,12 @@ typedef struct joy_priv_s {
  */
 #define IS_HAT(code) ((code) >= ABS_HAT0X) && ((code) <= ABS_HAT3Y)
 
+#define IS_HAT_X_AXIS(code) ((code) == ABS_HAT0X || (code) == ABS_HAT1X || \
+                             (code) == ABS_HAT2X || (code) == ABS_HAT3X)
+
+#define IS_HAT_Y_AXIS(code) ((code) == ABS_HAT0Y || (code) == ABS_HAT1Y || \
+                             (code) == ABS_HAT2Y || (code) == ABS_HAT3Y)
+
 
 /** \brief X and Y axes for the four hats found in `linux/input-event-codes.h` */
 static const hat_evcode_t hat_event_codes[] = {
@@ -146,13 +152,6 @@ static const char *get_hat_name(unsigned int code)
             return NULL;
     }
 }
-
-static bool hat_code_is_x_axis(unsigned int code)
-{
-    return (bool)(code == ABS_HAT0X || code == ABS_HAT1X ||
-                  code == ABS_HAT2X || code == ABS_HAT3X);
-}
-        
 
 static int node_filter(const struct dirent *de)
 {

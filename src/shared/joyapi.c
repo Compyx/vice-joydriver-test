@@ -551,13 +551,13 @@ void joy_hat_event(joy_device_t *joydev, joy_hat_t *hat, int32_t value)
                 joy_direction_name((uint32_t)value));
 
     /* TODO: latch/unlatch pins */
-    prev = joydev->priv;
+    prev = hat->prev;
     if (prev == value) {
         return;
     }
 
     joy_perform_event(joydev, &(hat->mapping), value);
-    joydev->prev = value;
+    hat->prev = value;
 }
 
 
