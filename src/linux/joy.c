@@ -147,6 +147,13 @@ static const char *get_hat_name(unsigned int code)
     }
 }
 
+static bool hat_code_is_x_axis(unsigned int code)
+{
+    return (bool)(code == ABS_HAT0X || code == ABS_HAT1X ||
+                  code == ABS_HAT2X || code == ABS_HAT3X);
+}
+        
+
 static int node_filter(const struct dirent *de)
 {
     const char *name;

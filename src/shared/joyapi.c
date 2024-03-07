@@ -535,10 +535,12 @@ void joy_button_event(joy_device_t *joydev, joy_button_t *button, int32_t value)
  *
  * \param[in]   joydev  joystick device triggering the event
  * \param[in]   hat     hat object
- * \param[in]   value   hat value
+ * \param[in]   value   hat value (joystick pins bitmask)
  */
 void joy_hat_event(joy_device_t *joydev, joy_hat_t *hat, int32_t value)
 {
+    int32_t prev;
+
     if (hat == NULL) {
         msg_error("`hat` is NULL\n");
         return;
@@ -549,7 +551,13 @@ void joy_hat_event(joy_device_t *joydev, joy_hat_t *hat, int32_t value)
                 joy_direction_name((uint32_t)value));
 
     /* TODO: latch/unlatch pins */
+    prev = joydev->priv;
+    if (prev == value) {
+        return;
+    }
+
     joy_perform_event(joydev, &(hat->mapping), value);
+    joydev->prev = value;
 }
 
 
@@ -608,7 +616,7 @@ void joy_close(joy_device_t *joydev)
  */
 bool joy_poll(joy_device_t *joydev)
 {
-    msg_debug("called\n");
+    //msg_debug("called\n");
     if (joydev == NULL) {
         msg_error("`joydev` is NULL\n");
         return false;
