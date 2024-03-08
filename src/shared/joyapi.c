@@ -382,6 +382,36 @@ joy_axis_t *joy_axis_from_name(joy_device_t *joydev, const char *name)
     return NULL;
 }
 
+/** \brief  Translate raw axis value to joystick axis value enum
+ *
+ * \param[in]   axis        joystick axis
+ * \param[in]   hw_value    raw value from hardware
+ *
+ * \return  joystick axis value used by VICE
+ */
+joystick_axis_value_t joy_axis_value_from_hwdata(joy_axis_t *axis, int32_t hw_value)
+{
+    joystick_axis_value_t axis_value = JOY_AXIS_MIDDLE;
+
+    if (axis->digital) {
+        if (hw_value < 0) {
+            axis_value = JOY_AXIS_NEGATIVE;
+        } else if (hw_value > 0) {
+            axis_value = JOY_AXIS_POSITIVE;
+        }
+    } else {
+        int32_t threshold = (axis->maximum - axis->minimum) / 4;   /* TODO: configurable in vjm */
+
+        if (hw_value < (axis->minimum + threshold)) {
+            axis_value = JOY_AXIS_NEGATIVE;
+        } else if (hw_value > (axis->maximum - threshold)) {
+            axis_value = JOY_AXIS_POSITIVE;
+        }
+    }
+    msg_debug("hw value: %"PRId32", axis value: %d\n", hw_value, (int)axis_value);
+    return axis_value;
+}
+
 
 joy_button_t *joy_button_from_code(joy_device_t *joydev, uint16_t code)
 {
@@ -609,7 +639,7 @@ void joy_close(joy_device_t *joydev)
 
 
 /** \brief  Poll joystick device for input
- *
+*
  * \param[in]   joydev  joystick device
  *
  * \return  \c false on fatal error

@@ -571,16 +571,11 @@ static uint16_t get_hat_x_for_hat_code(uint16_t code)
     }
 }
 
-
 static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
 {
     joy_hat_t             *hat;
     joy_axis_t            *axis;
     joystick_axis_value_t  axis_value;
-    int32_t                minimum;
-    int32_t                maximum;
-    int32_t                centered;
-    int32_t                threshold;
 
     if (event->type == EV_SYN) {
         msg_verbose("event: time %ld.%06ld: %s\n",
@@ -603,63 +598,24 @@ static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
                              event->value);
         } else if (event->type == EV_ABS && IS_AXIS(event->code)) {
             /* TODO: configurable threshold/deadzone */
-            axis      = joy_axis_from_code(joydev, event->code);
-            minimum   = axis->minimum;
-            maximum   = axis->maximum;
-            centered  = (maximum - minimum) / 2;
-            threshold = centered / 2;
-
-            if (event->value < (centered - threshold)) {
-                axis_value = JOY_AXIS_NEGATIVE;
-            } else if ((event->value >= (centered - threshold)) &&
-                       (event->value <= (centered + threshold))) {
-                axis_value = JOY_AXIS_MIDDLE;
-            } else {
-                axis_value = JOY_AXIS_POSITIVE;
-            }
-
+            axis       = joy_axis_from_code(joydev, event->code);
+            axis_value = joy_axis_value_from_hwdata(axis, event->value);
             joy_axis_event(joydev, axis, axis_value);
 
         } else if (event->type == EV_ABS && IS_HAT(event->code)) {
 
             hat = joy_hat_from_code(joydev, get_hat_x_for_hat_code(event->code));
             if (hat == NULL) {
-                fprintf(stderr, "%s(): error: hat is NULL\n", __func__);
+                msg_error("hat is NULL\n");
                 return;
             }
-      //      printf("hat name = %s\n", hat->name);
 
-            if (event->value < 0) {
-                axis_value = JOY_AXIS_NEGATIVE;
-            } else if (event->value > 0) {
-                axis_value = JOY_AXIS_POSITIVE;
-            } else {
-                axis_value = JOY_AXIS_MIDDLE;
-            }
-
-            switch (event->code) {
-                case ABS_HAT0X:
-                case ABS_HAT1X:
-                case ABS_HAT2X:
-                case ABS_HAT3X:
-                    axis = &(hat->x);
-                    break;
-                case ABS_HAT0Y:
-                case ABS_HAT1Y:
-                case ABS_HAT2Y:
-                case ABS_HAT3Y:
-                    axis = &(hat->y);
-                    break;
-                default:
-                    fprintf(stderr, "%s(): warning: unknown hat axis code %04x\n",
-                            __func__, (unsigned int)event->code);
-                    return;
-            }
 #if 0
             printf("axis = %p\n", (const void*)axis);
             printf("axis->name = %s\n", axis->name);
-#endif
             joy_axis_event(joydev, axis, axis_value);
+#endif
+            joy_hat_event(joydev, hat, 0xff);
         }
     }
 }
