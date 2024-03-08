@@ -94,7 +94,6 @@ typedef struct joy_mapping_s {
     joy_calibration_t  calibration;
 } joy_mapping_t;
 
-
 typedef enum {
     JOY_HAT_INVALID = -1,
     JOY_HAT_NEUTRAL = 0,
@@ -183,16 +182,16 @@ typedef struct joy_device_s {
     int           port;             /**< port number (0-based, -1 = unassigned) */
     uint32_t      capabilities;     /**< capabilities bitmask */
 
-    void         *priv;             /**< used for driver/arch-specific data */
+    void         *hwdata;           /**< used for driver/arch-specific data */
 } joy_device_t;
 
 /** \brief  Joystick driver registration object
  */
 typedef struct joy_driver_s {
-    bool (*open)     (joy_device_t *joydev);    /**< open device for polling */
-    bool (*poll)     (joy_device_t *joydev);    /**< poll device */
-    void (*close)    (joy_device_t *joydev);    /**< close device */
-    void (*priv_free)(void         *priv);      /**< free private data */
+    bool (*open)       (joy_device_t *joydev);  /**< open device for polling */
+    bool (*poll)       (joy_device_t *joydev);  /**< poll device */
+    void (*close)      (joy_device_t *joydev);  /**< close device */
+    void (*hwdata_free)(void         *hwdata);  /**< free hardware-specific data */
 } joy_driver_t;
 
 typedef struct joymap_s {

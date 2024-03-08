@@ -52,15 +52,15 @@ typedef struct {
     const char   *name;
 } ev_code_name_t;
 
-/** \brief  Private data object
+/** \brief  Hardware-specific data
  *
  * Allocated during device detection, used in the \c open(), \c poll() and
- * \c close() driver callbacks, freed via the driver's \c priv_free() callback.
+ * \c close() driver callbacks, freed via the driver's \c hwdata_free() callback.
  */
-typedef struct joy_priv_s {
+typedef struct hwdata_s {
     struct libevdev *evdev;     /**< evdev instance */
     int              fd;        /**< file descriptor */
-} joy_priv_t;
+} hwdata_t;
 
 
 /* The XBox "profile" axis is a recent addition, from kernel ~6.1 onward, so we
@@ -109,28 +109,28 @@ static const hat_evcode_t hat_event_codes[] = {
 };
 
 
-static joy_priv_t *joydev_priv_new(void)
+static hwdata_t *hwdata_new(void)
 {
-    joy_priv_t *priv = lib_malloc(sizeof *priv);
+    hwdata_t *hwdata= lib_malloc(sizeof *hwdata);
 
-    priv->evdev = NULL;
-    priv->fd    = -1;
-    return priv;
+    hwdata->evdev = NULL;
+    hwdata->fd    = -1;
+    return hwdata;
 }
 
-static void joydev_priv_free(void *priv)
+static void hwdata_free(void *hwdata)
 {
-    joy_priv_t *pr = priv;
+    hwdata_t *hw = hwdata;
 
-    if (pr != NULL) {
-        if (pr->evdev) {
-            libevdev_free(pr->evdev);
+    if (hw != NULL) {
+        if (hw->evdev) {
+            libevdev_free(hw->evdev);
         }
-        if (pr->fd >= 0) {
-            close(pr->fd);
+        if (hw->fd >= 0) {
+            close(hw->fd);
         }
     }
-    lib_free(priv);
+    lib_free(hwdata);
 }
 
 static const char *get_hat_name(unsigned int code)
@@ -380,7 +380,7 @@ static joy_device_t *get_device_data(const char *node)
     scan_axes(joydev, evdev);
     scan_hats(joydev, evdev);
 
-    joydev->priv = joydev_priv_new();
+    joydev->hwdata = hwdata_new();
 
     libevdev_free(evdev);
     close(fd);
@@ -463,7 +463,7 @@ int joy_arch_device_list_init(joy_device_t ***devices)
  */
 static bool joydev_open(joy_device_t *joydev)
 {
-    joy_priv_t      *priv;
+    hwdata_t       * hwdata;
     struct libevdev *evdev;
     int              fd;
     int              rc;
@@ -481,9 +481,9 @@ static bool joydev_open(joy_device_t *joydev)
         return false;
     }
 
-    priv         = joydev->priv;
-    priv->evdev  = evdev;
-    priv->fd     = fd;
+    hwdata        = joydev->hwdata;
+    hwdata->evdev = evdev;
+    hwdata->fd    = fd;
     return true;
 }
 
@@ -497,16 +497,16 @@ static bool joydev_open(joy_device_t *joydev)
  */
 static void joydev_close(joy_device_t *joydev)
 {
-    joy_priv_t *priv = joydev->priv;
+    hwdata_t *hwdata = joydev->hwdata;
 
-    if (priv != NULL) {
-        if (priv->fd >= 0) {
-            close(priv->fd);
-            priv->fd = -1;
+    if (hwdata != NULL) {
+        if (hwdata->fd >= 0) {
+            close(hwdata->fd);
+            hwdata->fd = -1;
         }
-        if (priv->evdev != NULL) {
-            libevdev_free(priv->evdev);
-            priv->evdev = NULL;
+        if (hwdata->evdev != NULL) {
+            libevdev_free(hwdata->evdev);
+            hwdata->evdev = NULL;
         }
     }
 }
@@ -623,21 +623,21 @@ static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
 
 static bool joydev_poll(joy_device_t *joydev)
 {
-    joy_priv_t         *priv;
+    hwdata_t           *hwdata;
     struct libevdev    *evdev;
     struct input_event  event;
     unsigned int        flags = LIBEVDEV_READ_FLAG_NORMAL;
     int                 fd;
     int                 rc;
 
-    if (joydev == NULL || joydev->priv == NULL) {
+    if (joydev == NULL || joydev->hwdata == NULL) {
         /* nothing to poll */
         return false;
     }
 
-    priv  = joydev->priv;
-    evdev = priv->evdev;
-    fd    = priv->fd;
+    hwdata = joydev->hwdata;
+    evdev  = hwdata->evdev;
+    fd     = hwdata->fd;
     if (evdev == NULL || fd < 0) {
         fprintf(stderr, "%s(): evdev is NULL or fd invalid\n", __func__);
         return false;
@@ -666,10 +666,10 @@ static bool joydev_poll(joy_device_t *joydev)
 bool joy_arch_init(void)
 {
     joy_driver_t driver = {
-        .open      = joydev_open,
-        .close     = joydev_close,
-        .poll      = joydev_poll,
-        .priv_free = joydev_priv_free
+        .open        = joydev_open,
+        .close       = joydev_close,
+        .poll        = joydev_poll,
+        .hwdata_free = hwdata_free
     };
 
     joy_driver_register(&driver);

@@ -58,10 +58,10 @@ static joy_driver_t driver;
  */
 void joy_driver_register(const joy_driver_t *drv)
 {
-    driver.open      = drv->open;
-    driver.close     = drv->close;
-    driver.poll      = drv->poll;
-    driver.priv_free = drv->priv_free;
+    driver.open        = drv->open;
+    driver.close       = drv->close;
+    driver.poll        = drv->poll;
+    driver.hwdata_free = drv->hwdata_free;
 }
 
 
@@ -109,7 +109,7 @@ joy_device_t *joy_device_new(void)
     dev->port         = -1;  /* unassigned */
     dev->capabilities = JOY_CAPS_NONE;  /* cannot be mapped to any emulated input */
 
-    dev->priv         = NULL;
+    dev->hwdata       = NULL;
 
     return dev;
 }
@@ -131,8 +131,8 @@ void joy_device_free(joy_device_t *joydev)
     if (driver.close != NULL) {
         driver.close(joydev);
     }
-    if (driver.priv_free != NULL && joydev->priv != NULL) {
-        driver.priv_free(joydev->priv);
+    if (driver.hwdata_free != NULL && joydev->hwdata != NULL) {
+        driver.hwdata_free(joydev->hwdata);
     }
 
     lib_free(joydev->name);
