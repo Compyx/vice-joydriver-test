@@ -82,9 +82,9 @@ typedef struct {
 #define HATS_INITIAL_SIZE   4
 
 
-typedef struct joy_priv_s {
+typedef struct hwdata_s {
     LPDIRECTINPUTDEVICE8 didev;
-} joy_priv_t;
+} hwdata_t;
 
 
 /** \brief  Global DirectInput8 interface handle */
@@ -92,21 +92,21 @@ static LPDIRECTINPUT8 dinput_handle = NULL;
 
 
 
-static joy_priv_t *joy_priv_new(void)
+static hwdata_t *hwdata_new(void)
 {
-    joy_priv_t *priv = lib_malloc(sizeof *priv);
+    hwdata_t *hwdata = lib_malloc(sizeof *hwdata);
 
-    priv->didev = NULL;
-    return priv;
+    hwdata->didev = NULL;
+    return hwdata;
 }
 
-static void joy_priv_free(void *priv)
+static void hwdata_free(void *hwdata)
 {
-    joy_priv_t *pr = priv;
+    hwdata_t *hw = hwdata;
 
-    if (pr != NULL) {
-        IDirectInputDevice8_Release(pr->didev);
-        lib_free(pr);
+    if (hw != NULL) {
+        IDirectInputDevice8_Release(hw->didev);
+        lib_free(hw);
     }
 }
 
@@ -249,7 +249,7 @@ static BOOL EnumObjects_hats_cb(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
 static BOOL EnumDevices_cb(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
 {
     joy_device_t         *joydev;
-    joy_priv_t           *priv;
+    hwdata_t             *hwdata;
     DIDEVCAPS             caps;
     LPDIRECTINPUTDEVICE8  didev;
     uint16_t              vendor;
@@ -262,9 +262,8 @@ static BOOL EnumDevices_cb(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
     axis_iter_t           axis_iter;
     hat_iter_t            hat_iter;
 
-    window = GetModuleHandle(NULL);
+    window      = GetModuleHandle(NULL);
     device_iter = pvref;
-
 
     /* get capabilities of device */
     result = IDirectInput8_CreateDevice(dinput_handle,
@@ -337,9 +336,9 @@ static BOOL EnumDevices_cb(LPCDIDEVICEINSTANCE ddi, LPVOID pvref)
     device_iter->list[device_iter->index++] = joydev;
     device_iter->list[device_iter->index]   = NULL;
 
-    priv = joy_priv_new();
-    priv->didev = didev;
-    joydev->priv = priv;
+    hwdata         = hwdata_new();
+    hwdata->didev  = didev;
+    joydev->hwdata = hwdata;
 
     return DIENUM_CONTINUE;
 }
@@ -385,10 +384,10 @@ int joy_arch_device_list_init(joy_device_t ***devices)
 
 static bool joydev_open(joy_device_t *joydev)
 {
-    joy_priv_t *priv = joydev->priv;
+    hwdata_t *hwdata = joydev->hwdata;
 
     msg_debug("opening device %s: ", joydev->name);
-    if (IDirectInputDevice8_Acquire(priv->didev) != DI_OK) {
+    if (IDirectInputDevice8_Acquire(hwdata->didev) != DI_OK) {
         if (debug) {
             printf("failed!\n");
         }
@@ -403,7 +402,7 @@ static bool joydev_open(joy_device_t *joydev)
 
 static bool joydev_poll(joy_device_t *joydev)
 {
-    joy_priv_t           *priv;
+    hwdata_t             *hwdata;
     DIJOYSTATE2           jstate;
     LPDIRECTINPUTDEVICE8  didev;
     HRESULT               result;
@@ -419,8 +418,8 @@ static bool joydev_poll(joy_device_t *joydev)
     };
 
 
-    priv   = joydev->priv;
-    didev  = priv->didev;
+    hwdata = joydev->hwdata;
+    didev  = hwdata->didev;
     result = IDirectInputDevice8_Poll(didev);
     if (result != DI_OK && result != DI_NOEFFECT) {
         msg_error("IDirectInputDevice8::Poll() failed: %lx\n", result);
@@ -498,9 +497,11 @@ static bool joydev_poll(joy_device_t *joydev)
 
 static void joydev_close(joy_device_t *joydev)
 {
-    joy_priv_t *priv = joydev->priv;
+    hwdata_t *hwdata = joydev->hwdata;
 
-    IDirectInputDevice8_Unacquire(priv->didev);
+    if (hwdata != NULL) {
+        IDirectInputDevice8_Unacquire(hwdata->didev);
+    }
 }
 
 
@@ -508,10 +509,10 @@ static void joydev_close(joy_device_t *joydev)
 bool joy_arch_init(void)
 {
     joy_driver_t driver = {
-        .open      = joydev_open,
-        .poll      = joydev_poll,
-        .close     = joydev_close,
-        .priv_free = joy_priv_free
+        .open        = joydev_open,
+        .poll        = joydev_poll,
+        .close       = joydev_close,
+        .hwdata_free = hwdata_free
     };
 
     joy_driver_register(&driver);
