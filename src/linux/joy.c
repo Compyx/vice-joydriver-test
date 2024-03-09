@@ -212,6 +212,25 @@ static void scan_buttons(joy_device_t *joydev, struct libevdev *evdev)
 }
 
 
+static bool axis_is_digital(joy_axis_t *axis)
+{
+    if (axis->minimum == -1 && axis->maximum == 1) {
+        /* definitely digital */
+        return true;
+        axis->digital = true;
+    } else if (axis->flat == 0 && axis->fuzz == 0 && axis->resolution == 0) {
+        /* most likely digital */
+        /* XXX: SDL uses this logic, but it doesn't work correctly
+         *      for the analog triggers ABS_Z and ABS_RZ on my
+         *      Logitech F710, so it's commented out for now.
+         */
+#if 0
+        return true;
+#endif
+    }
+    return false;
+}
+
 
 static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
 {
@@ -253,19 +272,7 @@ static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
                 }
 
                 /* determine if we're dealing with a digital or an analog axis */
-                if (axis->minimum == -1 && axis->maximum == 1) {
-                    /* definitely digital */
-                    axis->digital = true;
-                } else if (axis->flat == 0 && axis->fuzz == 0 && axis->resolution == 0) {
-                    /* most likely digital */
-                    /* XXX: SDL uses this logic, but it doesn't work correctly
-                     *      for the analog triggers ABS_Z and ABS_RZ on my
-                     *      Logitech F710, so it's commented out for now.
-                     */
-#if 0
-                    axis->digital = true;
-#endif
-                }
+                axis->digital = axis_is_digital(axis);
 
                 num++;
             }
@@ -316,6 +323,7 @@ static void scan_hats(joy_device_t *joydev, struct libevdev *evdev)
                     x_axis->minimum    = INT16_MIN;
                     x_axis->maximum    = INT16_MAX;
                 }
+                x_axis->digital = axis_is_digital(x_axis);
 
                 /* Y axis */
                 absinfo = libevdev_get_abs_info(evdev, y_code);
@@ -331,6 +339,7 @@ static void scan_hats(joy_device_t *joydev, struct libevdev *evdev)
                     y_axis->minimum    = INT16_MIN;
                     y_axis->maximum    = INT16_MAX;
                 }
+                y_axis->digital = axis_is_digital(y_axis);
 
                 hat->name = lib_strdup(get_hat_name(x_code));
                 hat->code = x_code;
@@ -604,18 +613,41 @@ static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
 
         } else if (event->type == EV_ABS && IS_HAT(event->code)) {
 
+            int32_t x_pins = 0;
+            int32_t y_pins = 0;
+
             hat = joy_hat_from_code(joydev, get_hat_x_for_hat_code(event->code));
             if (hat == NULL) {
                 msg_error("hat is NULL\n");
                 return;
             }
 
-#if 0
-            printf("axis = %p\n", (const void*)axis);
-            printf("axis->name = %s\n", axis->name);
-            joy_axis_event(joydev, axis, axis_value);
-#endif
-            joy_hat_event(joydev, hat, 0xff);
+            /* On Linux we don't have hats as a single object but rather two
+             * axes combined into a "virtual" hat. The values for this "hat"
+             * come in with two separate event codes, one for each axis, so
+             * we combine the current axis of a hat with the previous value of
+             * the hat's other axis to determine the actual hat value: */
+            if (IS_HAT_X_AXIS(event->code)) {
+                axis_value = joy_axis_value_from_hwdata(&(hat->x), event->value);
+                if (axis_value == JOY_AXIS_NEGATIVE) {
+                    x_pins = JOYSTICK_DIRECTION_LEFT;
+                } else if (axis_value == JOY_AXIS_POSITIVE) {
+                    x_pins = JOYSTICK_DIRECTION_RIGHT;
+                }
+                hat->x.prev = x_pins;
+                y_pins      = hat->y.prev;
+            } else {
+                axis_value = joy_axis_value_from_hwdata(&(hat->y), event->value);
+                if (axis_value == JOY_AXIS_NEGATIVE) {
+                    y_pins = JOYSTICK_DIRECTION_UP;
+                } else if (axis_value == JOY_AXIS_POSITIVE) {
+                    y_pins = JOYSTICK_DIRECTION_DOWN;
+                }
+                hat->y.prev = y_pins;
+                x_pins      = hat->x.prev;
+            }
+
+            joy_hat_event(joydev, hat, x_pins|y_pins);
         }
     }
 }
