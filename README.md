@@ -5,51 +5,60 @@ joystick drivers for the non-SDL UIs in [VICE](https://github.com/VICE-Team/svn-
 Very much a work in progress.
 
 
-## Current status (2024-03-06)
+## Current status (2024-04-16)
+
+### Shared code
+
+Custom mappings (via .vjm files) are partially implemented: buttons and axes
+can be mapped to emulated devices' buttons and directions.
+Still to do is mapping to emulated keys (including with flags such as shifted),
+UI actions and non-binary POT values (e.g. mapping axes to mouse or paddle
+inputs).
 
 ### Linux
 
-Scanning devices for capabilities works, polling works. Button and axis events
-are passed to the generic joystick code.
+Scanning devices for capabilities works, polling works. Button, axis and hat
+events are passed to the generic joystick code.
 
-## BSD
+### BSD
 
-Scanning devices for capabilities works. No polling yet.
+Scanning devices for capabilities works, polling works. Button, axis and hat
+events are passed to the generic joystick code.
 
-## Windows
+### Windows
 
 Scanning devices for capabilities works, polling works. Button, axis and hat (POV)
 events are passed to the generic joystick code.
 
-## MacOS
+### MacOS
 
-Unsupported due to budgetary constraints.
+**Unsupported** due to budgetary constraints.
 
 
-### Prerequisites:
+## Prerequisites:
 
-#### Linux
+### Linux
 
 - libevdev (`sudo apt install libevdev-dev`)
 
-#### NetBSD
+### NetBSD
 
 - none
 
-#### FreeBSD
+### FreeBSD
 
 - none
 
-#### Windows
+### Windows
 
 - msys2
 
-#### MacOS
+### MacOS
 
 Unsupported.
 
 
-### Command line program
+## Command line program
 
 The test driver program is currently called `vice-joydriver-test`, and supports
 a few command line options:
@@ -74,7 +83,7 @@ command line arguments so the joymap can be loaded for said device.
 Polling (`--poll`) can be stopped by pressing Ctrl+C. Extra information can be
 printed by passing the `--verbose` and `--debug` flags.
 
-#### Examples
+### Examples
 
 Usage is fairly simple: `vice-joydriver-test [options] [<device1> <device2> .. <deviceN>]`
 Most options require at least one device node/GUID specified on the command
