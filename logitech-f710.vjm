@@ -14,3 +14,7 @@ map pin  4  axis    "ABS_X"     negative
 map pin  8  axis    "ABS_X"     positive
 map pin 16  button  "BTN_SOUTH"
 map pin 32  button  "BTN_NORTH"
+
+map key 1   2   %01100001   button  "BTN_WEST"
+# error:
+#map key 0   0   -1          button  "BTN_EAST"

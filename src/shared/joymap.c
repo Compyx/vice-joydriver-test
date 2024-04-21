@@ -14,6 +14,7 @@
 #include <errno.h>
 
 #include "joyapi.h"
+#include "keyboard.h"
 #include "lib.h"
 
 #include "joymap.h"
@@ -109,7 +110,6 @@ static bool kw_is_input_type(keyword_id_t kw)
     return (bool)(kw == VJM_KW_AXIS || kw == VJM_KW_BUTTON || kw == VJM_KW_HAT);
 }
 
-
 static bool kw_is_hat_direction(keyword_id_t kw)
 {
     return (bool)(kw == VJM_KW_NORTH || kw == VJM_KW_NORTHEAST ||
@@ -147,6 +147,21 @@ static bool pin_is_valid(int pin)
 {
     return (bool)(pin == 1  || pin == 2  || pin == 4 || pin == 8 ||
                   pin == 16 || pin == 32 || pin == 64);
+}
+
+static bool matrix_row_is_valid(int row)
+{
+    return (bool)(row >= KBD_ROW_JOY_KEYPAD && row <= 9);
+}
+
+static bool matrix_column_is_valid(int column)
+{
+    return (bool)(column >= 0 && column < KBD_COLS);
+}
+
+static bool matrix_flags_is_valid(int flags)
+{
+    return (bool)(flags >= 0 && flags < ((KBD_MOD_SHIFTLOCK * 2) - 1));
 }
 
 /** \brief  Strip trailing whitespace from line buffer */
@@ -311,6 +326,13 @@ static keyword_id_t get_keyword(char **endptr)
     return id;
 }
 
+/** \brief  Get string inside double quotes
+ *
+ * \param[out]  value   string value
+ * \param[out]  endptr  pointer to character after closing quote
+ *
+ * \note    free result with \c lib_free()
+ */
 static bool get_quoted_arg(char **value, char **endptr)
 {
     char *result;
@@ -364,6 +386,15 @@ static bool get_quoted_arg(char **value, char **endptr)
     return false;
 }
 
+/** \brief  Get integer argument from current position in line
+ *
+ * \param[out]  value   integer value
+ * \param[out]  endptr  pointer to character after input
+ *
+ * \return  \c true on success
+ *
+ * \note    logs errors with \c parser_log_error()
+ */
 static bool get_int_arg(int *value, char **endptr)
 {
     char *pos;
@@ -371,18 +402,23 @@ static bool get_int_arg(int *value, char **endptr)
     int   base = 10;
 
     pos = lineptr;
+    /* check prefixes */
     if (lineptr[0] == '0') {
         if (lineptr[1] == 'b' || lineptr[1] == 'B') {
+            /* 0bNNNN -> binary */ 
             base = 2;
             pos  = lineptr + 2;
         } else if (lineptr[1] == 'x' || lineptr[1] == 'X') {
+            /* 0xNNNN -> hex */
             base = 16;
             pos  = lineptr + 2;
         }
     } else if (lineptr[0] == '%') {
+        /* %NNNN -> binary */
         base = 2;
         pos  = lineptr + 1;
     } else if (lineptr[0] == '$') {
+        /* $NNNN -> hex */
         base = 16;
         pos  = lineptr + 1;
     }
@@ -476,9 +512,9 @@ static bool handle_pin_mapping(joymap_t *joymap)
         parser_log_error("expected input type ('axis', 'button' or 'hat')");
         return false;
     }
+    lineptr = endptr;
 
     /* input name */
-    lineptr = endptr;
     skip_whitespace();
     if (!get_quoted_arg(&input_name, &endptr)) {
         parser_log_error("expected input name");
@@ -551,6 +587,92 @@ static bool handle_pin_mapping(joymap_t *joymap)
     return true;
 }
 
+static bool handle_key_mapping(joymap_t *joymap)
+{
+    int           column;
+    int           row;
+    int           flags;
+    char         *endptr;
+    char         *input_name = NULL;
+    keyword_id_t  input_type;
+    keyword_id_t  input_direction;
+
+    /* row */
+    skip_whitespace();
+    if (!get_int_arg(&row, &endptr)) {
+        parser_log_error("expected keyboard matrix row number");
+        return false;
+    }
+    if (!matrix_row_is_valid(row)) {
+        parser_log_error("keyboard matrix row %d out of range", row);
+        return false;
+    }
+    lineptr = endptr;
+
+    /* column */
+    skip_whitespace();
+    if (!get_int_arg(&column, &endptr)) {
+        parser_log_error("expected keyboard matrix column number");
+        return false;
+    }
+    if (!matrix_column_is_valid(column)) {
+        parser_log_error("keyboard matrix column %d out of range", column);
+        return false;
+    }
+    lineptr = endptr;
+
+    /* flags */
+    skip_whitespace();
+    if (!get_int_arg(&flags, &endptr)) {
+        /* TODO: support keywords for flags */
+        parser_log_error("expected keyboard modifier flags");
+        return false;
+    }
+    if (!matrix_flags_is_valid(flags)) {
+        parser_log_error("invalid keyboard modifier flags: %d (%04x)",
+                         flags, (unsigned int)flags);
+        return false;
+    }
+    lineptr = endptr;
+
+    /* input type */
+    skip_whitespace();
+    input_type = get_keyword(&endptr);
+    if (!kw_is_input_type(input_type)) {
+        parser_log_error("expected input type ('axis', 'button' or 'hat')");
+        return false;
+    }
+    lineptr = endptr;
+
+    /* input name */
+    skip_whitespace();
+    if (!get_quoted_arg(&input_name, &endptr)) {
+        parser_log_error("expected input name");
+        return false;
+    }
+    lineptr = endptr;
+
+    if (input_type != VJM_KW_BUTTON) {
+        /* axes and hats require a direction argument */
+        skip_whitespace();
+        input_direction = get_keyword(&endptr);
+        if (!kw_is_direction(input_direction)) {
+            parser_log_error("expected direction argument for %s input",
+                             keywords[input_type]);
+            lib_free(input_name);
+            return false;
+        }
+    }
+
+
+
+
+    printf("got key column %d, row %d, flags %04x, input type %s, input name %s\n",
+           column, row, (unsigned int)flags, keywords[input_type], input_name); 
+    lib_free(input_name);
+    return true;
+}
+
 static bool handle_mapping(joymap_t *joymap)
 {
     char *endptr;
@@ -567,6 +689,16 @@ static bool handle_mapping(joymap_t *joymap)
 
         case VJM_KW_POT:
             parser_log_warning("TODO: handle 'pot'");
+            break;
+
+        case VJM_KW_KEY:
+            /* "key <column> <row> <flags> <input-name>" */
+            lineptr = endptr;
+            result = handle_key_mapping(joymap);
+            break;
+
+        case VJM_KW_ACTION:
+            parser_log_warning("TODO: handle 'action'");
             break;
 
         default:
