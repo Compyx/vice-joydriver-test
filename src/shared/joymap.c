@@ -61,6 +61,20 @@ typedef enum {
     VJM_KW_WEST,
 } keyword_id_t;
 
+/** \brief  Parser state object */
+typedef struct pstate_s {
+    const char *current_path;   /**< current path to vjm file */
+    char       *buffer;         /**< buffer for reading lines from file */
+    size_t      bufsize;        /**< number of bytes allocated for \c buffer */
+    size_t      buflen;         /**< string length of \c buffer */
+    int         linenum;        /**< line number in vjm file */
+    char       *curpos;         /**< current position in buffer */
+} pstate_t;
+
+
+/* forward declarations */
+static void parser_log_error(const char *fmt, ...);
+
 
 static const char *keywords[] = {
     "action",
@@ -97,12 +111,69 @@ static const char *keywords[] = {
 };
 
 
-static char   *linebuf;
-static size_t  linebuf_size;
-static size_t  linebuf_len;
-static int     linenum;
-char          *lineptr;
-const char    *current_path;
+/** \brief  Parser state
+ *
+ * Parser state is kept in a struct to allow for using simple identifiers
+ * without causing conflicts with other identifiers, and to make it simple to
+ * pass around a reference to the state to external modules, might that be
+ * required later.
+ */
+static pstate_t pstate;
+
+
+/** \brief  Initialize parser state
+ *
+ * Initialize parser for use, allocating an initial buffer for reading lines
+ * from a file.
+ */
+static void pstate_init(void)
+{
+    pstate.current_path = NULL;
+    pstate.bufsize   = LINEBUF_INITIAL_SIZE;
+    pstate.buflen    = 0;
+    pstate.buffer    = lib_malloc(pstate.bufsize);
+    pstate.buffer[0] = '\0';
+    pstate.curpos    = pstate.buffer;
+    pstate.linenum   = -1;
+};
+
+/** \brief  Clean up resources used by the parser state */
+static void pstate_free(void)
+{
+    lib_free(pstate.buffer);
+}
+
+/** \brief  Skip whitespace in the buffer to the next token */
+static void pstate_skip_whitespace(void)
+{
+    while (*(pstate.curpos) != '\0' && isspace((unsigned char)(*pstate.curpos))) {
+        pstate.curpos++;
+    }
+}
+
+/** \brief  Strip trailing whitespace from line buffer */
+static void pstate_rtrim(void)
+{
+    char *s = pstate.buffer + pstate.buflen - 1;
+
+    while (s >= pstate.buffer && isspace((unsigned char)*s)) {
+        *s-- = '\0';
+    }
+}
+
+/** \brief  Set new position in buffer and skip whitespace until next token
+ *
+ * \param[in]   newpos  new position in the parser's line buffer
+ */
+static void pstate_update(char *newpos)
+{
+    if (newpos == NULL) {
+        parser_log_error("newpos is NULL!");
+        return;
+    }
+    pstate.curpos = newpos;
+    pstate_skip_whitespace();
+}
 
 
 static bool kw_is_input_type(keyword_id_t kw)
@@ -164,27 +235,10 @@ static bool matrix_flags_is_valid(int flags)
     return (bool)(flags >= 0 && flags < ((KBD_MOD_SHIFTLOCK * 2) - 1));
 }
 
-/** \brief  Strip trailing whitespace from line buffer */
-static void rtrim_linebuf(void)
-{
-    char *p = linebuf + linebuf_len - 1;
-
-    while (p >= linebuf && isspace((unsigned char)*p)) {
-        *p-- = '\0';
-    }
-}
-
-static void skip_whitespace(void)
-{
-    while (*lineptr != '\0' && isspace((unsigned char)*lineptr)) {
-        lineptr++;
-    }
-}
-
 
 static void parser_log_helper(const char *prefix, const char *fmt, va_list args)
 {
-    char    msg[1024];
+    char msg[1024];
 
     vsnprintf(msg, sizeof msg, fmt, args);
     if (prefix != NULL) {
@@ -192,7 +246,10 @@ static void parser_log_helper(const char *prefix, const char *fmt, va_list args)
     }
     fprintf(stderr,
             "%s:%d:%d: %s\n",
-            lib_basename(current_path), linenum, (int)(lineptr - linebuf) + 1, msg);
+            lib_basename(pstate.current_path),
+            pstate.linenum,
+            (int)(pstate.curpos - pstate.buffer) + 1,
+            msg);
 }
 
 static void parser_log_error(const char *fmt, ...)
@@ -250,8 +307,8 @@ static joymap_t *joymap_open(const char *path)
     joymap_t *joymap;
     FILE     *fp;
 
-    linenum    = 1;
-    linebuf[0] = '\0';
+    pstate.linenum   = 1;
+    pstate.buffer[0] = '\0';
 
     fp = fopen(path, "r");
     if (fp == NULL) {
@@ -268,60 +325,59 @@ static joymap_t *joymap_open(const char *path)
 
 static bool joymap_read_line(joymap_t *joymap)
 {
-    linebuf_len = 0;
-    linebuf[0]  = '\0';
+    pstate.buflen    = 0;
+    pstate.buffer[0] = '\0';
+    pstate.curpos    = pstate.buffer;
 
     while (true) {
         int ch;
 
-        if (linebuf_len - 1u == linebuf_size) {
-            linebuf_size *= 2u;
-            linebuf = lib_realloc(linebuf, linebuf_size);
+        if (pstate.buflen - 1u == pstate.bufsize) {
+            pstate.bufsize *= 2u;
+            pstate.buffer = lib_realloc(pstate.buffer, pstate.bufsize);
         }
 
         ch = fgetc(joymap->fp);
         if (ch == EOF) {
-            linebuf[linebuf_len] = '\0';
-            rtrim_linebuf();
+            pstate.buffer[pstate.buflen] = '\0';
+            pstate_rtrim();
             return false;
         } else if (ch == '\n') {
             break;
         }
-        linebuf[linebuf_len++] = (char)ch;
+        pstate.buffer[pstate.buflen++] = (char)ch;
     }
 
-    linebuf[linebuf_len] = '\0';
-    rtrim_linebuf();
-    linenum++;
+    pstate.buffer[pstate.buflen] = '\0';
+    pstate_rtrim();
+    pstate.linenum++;
     return true;
 }
 
-static keyword_id_t get_keyword(char **endptr)
+static keyword_id_t get_keyword(void)
 {
     keyword_id_t  id  = VJM_KW_INVALID;
-    char         *pos = lineptr;
+    char         *pos = pstate.curpos;
 
     /* keyword  = '[a-z][a-z0-9[-]'+ */
     if (!islower((unsigned char)*pos)) {
-        return false;
+        return VJM_KW_INVALID;
     }
     pos++;
     while (*pos != '\0' &&
             (islower((unsigned char)*pos) || isdigit((unsigned char)*pos) || *pos == '-')) {
         pos++;
     }
-    if (pos > lineptr) {
+    if (pos > pstate.curpos) {
         size_t i;
 
         for (i = 0; i < ARRAY_LEN(keywords); i++) {
-            if (strncmp(keywords[i], lineptr, (size_t)(pos - lineptr)) == 0) {
+            if (strncmp(keywords[i], pstate.curpos, (size_t)(pos - pstate.curpos)) == 0) {
                 id = (keyword_id_t)i;
+                pstate_update(pos);
                 break;
             }
         }
-    }
-    if (endptr != NULL) {
-        *endptr = pos;
     }
     return id;
 }
@@ -329,39 +385,33 @@ static keyword_id_t get_keyword(char **endptr)
 /** \brief  Get string inside double quotes
  *
  * \param[out]  value   string value
- * \param[out]  endptr  pointer to character after closing quote
  *
  * \note    free result with \c lib_free()
  */
-static bool get_quoted_arg(char **value, char **endptr)
+static bool get_quoted_arg(char **value)
 {
     char *result;
     char *rpos;
     char *lpos;
     bool  escaped;
 
-    if (*lineptr != '"') {
-        if (endptr != NULL) {
-            *endptr = lineptr;
-        }
+    if (*pstate.curpos != '"') {
         parser_log_error("expected opening double quote");
         *value = NULL;
         return false;
     }
 
-    result  = lib_malloc(linebuf_len - (size_t)(lineptr - linebuf) + 1u);
+    result  = lib_malloc(pstate.buflen - (size_t)(pstate.curpos - pstate.buffer) + 1u);
     escaped = false;
-    lpos    = lineptr + 1;
+    lpos    = pstate.curpos + 1;
     rpos    = result;
     while (*lpos != '\0') {
         if (*lpos == '"') {
             if (!escaped) {
                 /* end of argument */
-                if (endptr != NULL) {
-                    *endptr = lpos + 1;
-                }
-                *rpos = '\0';
+                *rpos  = '\0';
                 *value = result;
+                pstate_update(lpos + 1);
                 return true;
             } else {
                 *rpos++ = *lpos;
@@ -389,44 +439,44 @@ static bool get_quoted_arg(char **value, char **endptr)
 /** \brief  Get integer argument from current position in line
  *
  * \param[out]  value   integer value
- * \param[out]  endptr  pointer to character after input
  *
  * \return  \c true on success
  *
  * \note    logs errors with \c parser_log_error()
  */
-static bool get_int_arg(int *value, char **endptr)
+static bool get_int_arg(int *value)
 {
-    char *pos;
+    char *s;
+    char *endptr;
     long  result;
     int   base = 10;
 
-    pos = lineptr;
+    s = pstate.curpos;
     /* check prefixes */
-    if (lineptr[0] == '0') {
-        if (lineptr[1] == 'b' || lineptr[1] == 'B') {
+    if (s[0] == '0') {
+        if (s[1] == 'b' || s[1] == 'B') {
             /* 0bNNNN -> binary */ 
             base = 2;
-            pos  = lineptr + 2;
-        } else if (lineptr[1] == 'x' || lineptr[1] == 'X') {
+            s += 2;
+        } else if (s[1] == 'x' || s[1] == 'X') {
             /* 0xNNNN -> hex */
             base = 16;
-            pos  = lineptr + 2;
+            s += 2;
         }
-    } else if (lineptr[0] == '%') {
+    } else if (s[0] == '%') {
         /* %NNNN -> binary */
         base = 2;
-        pos  = lineptr + 1;
-    } else if (lineptr[0] == '$') {
+        s++;
+    } else if (s[0] == '$') {
         /* $NNNN -> hex */
         base = 16;
-        pos  = lineptr + 1;
+        s++;
     }
 
     errno = 0;
-    result = strtol(pos, endptr, base);
+    result = strtol(s, &endptr, base);
     if (errno != 0) {
-        parser_log_error("failed to convert '%s' to long", lineptr);
+        parser_log_error("failed to convert '%s' to long", pstate.curpos);
         return false;
     }
     msg_debug("got value %ld\n", result);
@@ -444,17 +494,17 @@ static bool get_int_arg(int *value, char **endptr)
 #endif
 
     *value  = (int)result;
+    pstate_update(endptr);
     return true;
 }
 
 
 static bool get_vjm_version(joymap_t *joymap)
 {
-    int   major;
-    int   minor;
-    char *endptr;
+    int major = 0;
+    int minor = 0;
 
-    if (!get_int_arg(&major, &endptr)) {
+    if (!get_int_arg(&major)) {
         parser_log_error("expected major version number");
         return false;
     }
@@ -462,12 +512,15 @@ static bool get_vjm_version(joymap_t *joymap)
         parser_log_error("major version number cannot be less than 0");
         return false;
     }
-    if (*endptr != '.') {
+
+    /* check for period and skip if present */
+    if (*pstate.curpos != '.') {
         parser_log_error("expected dot after major version number");
         return false;
     }
-    lineptr = endptr + 1;
-    if (!get_int_arg(&minor, &endptr)) {
+    pstate.curpos++;
+
+    if (!get_int_arg(&minor)) {
         parser_log_error("expected minor version number");
         return false;
     }
@@ -487,14 +540,12 @@ static bool handle_pin_mapping(joymap_t *joymap)
     keyword_id_t   input_type;
     keyword_id_t   input_direction = VJM_KW_NONE;
     char          *input_name = NULL;
-    char          *endptr;
     joy_axis_t    *axis;
     joy_button_t  *button;
     joy_mapping_t *mapping;
 
     /* pin number */
-    skip_whitespace();
-    if (!get_int_arg(&pin, &endptr)) {
+    if (!get_int_arg(&pin)) {
         /* TODO: check for up, down, left, right, fire[1-3] */
         parser_log_error("expected joystick pin number");
         return false;
@@ -503,33 +554,26 @@ static bool handle_pin_mapping(joymap_t *joymap)
         parser_log_error("invalid pin number %d", pin);
         return false;
     }
-    lineptr = endptr;
 
     /* input type */
-    skip_whitespace();
-    input_type = get_keyword(&endptr);
+    input_type = get_keyword();
     if (!kw_is_input_type(input_type)) {
         parser_log_error("expected input type ('axis', 'button' or 'hat')");
         return false;
     }
-    lineptr = endptr;
 
     /* input name */
-    skip_whitespace();
-    if (!get_quoted_arg(&input_name, &endptr)) {
+    if (!get_quoted_arg(&input_name)) {
         parser_log_error("expected input name");
         return false;
     }
-    lineptr = endptr;
-    msg_debug("line after input name: '%s'\n", lineptr);
 
     if (input_type != VJM_KW_BUTTON) {
         /* axes and hats require a direction argument */
-        skip_whitespace();
-        input_direction = get_keyword(&endptr);
+        input_direction = get_keyword();
         if (!kw_is_direction(input_direction)) {
-            parser_log_error("expected direction argument for %s input",
-                             keywords[input_type]);
+            parser_log_error("expected direction argument for %s input: '%s'",
+                             keywords[input_type], pstate.curpos);
             lib_free(input_name);
             return false;
         }
@@ -592,14 +636,12 @@ static bool handle_key_mapping(joymap_t *joymap)
     int           column;
     int           row;
     int           flags;
-    char         *endptr;
     char         *input_name = NULL;
     keyword_id_t  input_type;
     keyword_id_t  input_direction;
 
     /* row */
-    skip_whitespace();
-    if (!get_int_arg(&row, &endptr)) {
+    if (!get_int_arg(&row)) {
         parser_log_error("expected keyboard matrix row number");
         return false;
     }
@@ -607,11 +649,9 @@ static bool handle_key_mapping(joymap_t *joymap)
         parser_log_error("keyboard matrix row %d out of range", row);
         return false;
     }
-    lineptr = endptr;
 
     /* column */
-    skip_whitespace();
-    if (!get_int_arg(&column, &endptr)) {
+    if (!get_int_arg(&column)) {
         parser_log_error("expected keyboard matrix column number");
         return false;
     }
@@ -619,11 +659,9 @@ static bool handle_key_mapping(joymap_t *joymap)
         parser_log_error("keyboard matrix column %d out of range", column);
         return false;
     }
-    lineptr = endptr;
 
     /* flags */
-    skip_whitespace();
-    if (!get_int_arg(&flags, &endptr)) {
+    if (!get_int_arg(&flags)) {
         /* TODO: support keywords for flags */
         parser_log_error("expected keyboard modifier flags");
         return false;
@@ -633,29 +671,23 @@ static bool handle_key_mapping(joymap_t *joymap)
                          flags, (unsigned int)flags);
         return false;
     }
-    lineptr = endptr;
 
     /* input type */
-    skip_whitespace();
-    input_type = get_keyword(&endptr);
+    input_type = get_keyword();
     if (!kw_is_input_type(input_type)) {
         parser_log_error("expected input type ('axis', 'button' or 'hat')");
         return false;
     }
-    lineptr = endptr;
 
     /* input name */
-    skip_whitespace();
-    if (!get_quoted_arg(&input_name, &endptr)) {
+    if (!get_quoted_arg(&input_name)) {
         parser_log_error("expected input name");
         return false;
     }
-    lineptr = endptr;
 
     if (input_type != VJM_KW_BUTTON) {
         /* axes and hats require a direction argument */
-        skip_whitespace();
-        input_direction = get_keyword(&endptr);
+        input_direction = get_keyword();
         if (!kw_is_direction(input_direction)) {
             parser_log_error("expected direction argument for %s input",
                              keywords[input_type]);
@@ -663,9 +695,6 @@ static bool handle_key_mapping(joymap_t *joymap)
             return false;
         }
     }
-
-
-
 
     printf("got key column %d, row %d, flags %04x, input type %s, input name %s\n",
            column, row, (unsigned int)flags, keywords[input_type], input_name); 
@@ -675,15 +704,11 @@ static bool handle_key_mapping(joymap_t *joymap)
 
 static bool handle_mapping(joymap_t *joymap)
 {
-    char *endptr;
-    bool  result = true;
+    bool result = true;
 
-    skip_whitespace();
-
-    switch (get_keyword(&endptr)) {
+    switch (get_keyword()) {
         case VJM_KW_PIN:
             /* "pin <pin#> <input-type> <input-name> [<input-args>]" */
-            lineptr = endptr;
             result = handle_pin_mapping(joymap);
             break;
 
@@ -693,7 +718,6 @@ static bool handle_mapping(joymap_t *joymap)
 
         case VJM_KW_KEY:
             /* "key <column> <row> <flags> <input-name>" */
-            lineptr = endptr;
             result = handle_key_mapping(joymap);
             break;
 
@@ -715,10 +739,9 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
     int   vendor;
     int   product;
     int   version;
-    char *endptr;
     bool  result = true;
 
-    if (*lineptr == '\0') {
+    if (*pstate.curpos == '\0') {
         parser_log_error("missing data after keyword '%s'", keywords[kw]);
         return false;
     }
@@ -733,7 +756,7 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
             break;
 
         case VJM_KW_DEVICE_VENDOR:
-            if (!get_int_arg(&vendor, &endptr)) {
+            if (!get_int_arg(&vendor)) {
                 result =  false;
             } else if (vendor < 0 || vendor > 0xffff) {
                 parser_log_error("illegal value %d for device vendor ID", vendor);
@@ -744,7 +767,7 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
             break;
 
         case VJM_KW_DEVICE_PRODUCT:
-            if (!get_int_arg(&product, &endptr)) {
+            if (!get_int_arg(&product)) {
                 result = false;
             } else if (product < 0 || product > 0xffff) {
                 parser_log_error("illegal value %d for device product ID", product);
@@ -755,7 +778,7 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
             break;
 
         case VJM_KW_DEVICE_VERSION:
-            if (!get_int_arg(&version, &endptr)) {
+            if (!get_int_arg(&version)) {
                 result = false;
             } else if (version < 0 || version > 0xffff) {
                 parser_log_error("illegal value %d for device version", version);
@@ -766,7 +789,7 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
             break;
 
         case VJM_KW_DEVICE_NAME:
-            if (!get_quoted_arg(&(joymap->dev_name), &endptr)) {
+            if (!get_quoted_arg(&(joymap->dev_name))) {
                 result = false;
             } else {
                 msg_debug("got device name '%s'\n", joymap->dev_name);
@@ -791,26 +814,22 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
 static bool joymap_parse_line(joymap_t *joymap)
 {
     keyword_id_t  kw;
-    char         *endptr;
 
-    lineptr = linebuf;
+    pstate.curpos = pstate.buffer;
+    pstate_skip_whitespace();
 
-    skip_whitespace();
-    if (*lineptr == '\0' || *lineptr == VJM_COMMENT) {
+    if (*pstate.curpos == '\0' || *pstate.curpos == VJM_COMMENT) {
         return true;
     }
-    msg_debug("parsing line %d: \"%s\"\n", linenum, lineptr);
+    msg_debug("parsing line %d: \"%s\"\n", pstate.linenum, pstate.curpos);
 
     /* get keyword */
-    kw = get_keyword(&endptr);
+    kw = get_keyword();
     if (kw == VJM_KW_INVALID) {
-        *endptr = '\0';
-        parser_log_error("unknown keyword '%s'", lineptr);
+        parser_log_error("unknown keyword: %s", pstate.curpos);
         return false;
     }
     printf("found keyword: %d: %s\n", (int)kw, keywords[kw]);
-    lineptr = endptr;
-    skip_whitespace();
 
     return handle_keyword(joymap, kw);
 }
@@ -833,7 +852,7 @@ joymap_t *joymap_load(joy_device_t *joydev, const char *path)
         return NULL;
     }
 
-    current_path = path;
+    pstate.current_path = path;
 
     msg_debug("loading joymap file '%s'\n", path);
     joymap = joymap_open(path);
@@ -842,8 +861,8 @@ joymap_t *joymap_load(joy_device_t *joydev, const char *path)
     }
     joymap->joydev = joydev;
 
-    errno   = 0;
-    linenum = 0;
+    errno          = 0;
+    pstate.linenum = 0;
     while (joymap_read_line(joymap)) {
         if (!joymap_parse_line(joymap)) {
             joymap_free(joymap);
@@ -878,14 +897,11 @@ void joymap_dump(joymap_t *joymap)
 
 void joymap_module_init(void)
 {
-    linebuf_size = LINEBUF_INITIAL_SIZE;
-    linebuf_len  = 0;
-    linebuf      = lib_malloc(linebuf_size);
-    linebuf[0]   = '\0';
+    pstate_init();
 }
 
 
 void joymap_module_shutdown(void)
 {
-    lib_free(linebuf);
+    pstate_free();
 }
