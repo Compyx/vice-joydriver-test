@@ -69,12 +69,14 @@ typedef struct pstate_s {
     size_t      buflen;         /**< string length of \c buffer */
     int         linenum;        /**< line number in vjm file */
     char       *curpos;         /**< current position in buffer */
+    char       *prevpos;        /**< previous position in buffer for error
+                                     reporting */
 } pstate_t;
 
 
 /* forward declarations */
-static void parser_log_error(const char *fmt, ...);
-
+static void parser_log_warning(const char *fmt, ...);
+static void parser_log_error  (const char *fmt, ...);
 
 static const char *keywords[] = {
     "action",
@@ -134,6 +136,7 @@ static void pstate_init(void)
     pstate.buffer    = lib_malloc(pstate.bufsize);
     pstate.buffer[0] = '\0';
     pstate.curpos    = pstate.buffer;
+    pstate.prevpos   = pstate.buffer;
     pstate.linenum   = -1;
 };
 
@@ -171,11 +174,55 @@ static void pstate_update(char *newpos)
         parser_log_error("newpos is NULL!");
         return;
     }
-    pstate.curpos = newpos;
+    pstate.prevpos = pstate.curpos;
+    pstate.curpos  = newpos;
     pstate_skip_whitespace();
 }
 
+#if 0
+static bool pstate_is_number(void)
+{
+    char *s = pstate.curpos;
 
+    if (s[0] == '-' && isdigit((unsigned char)s[1])) {
+        return true;
+    } else if (s[0] == '0') {
+        if (s[1] == '\0' || isspace((unsigned char)s[1])) {
+            return true;
+        }
+        if ((s[1] == 'b' || s[1] == 'B') && (s[2] == '0' || s[2] == '1')) {
+            return true;
+        }
+        if ((s[1] == 'x' || s[1] == 'X') && isxdigit((unsigned char)s[2])) {
+            return true;
+        }
+    } else if (s[0] == '%' && (s[1] == '0' || s[1] == '1')) {
+        return true;
+    } else if (s[0] == '$' && isxdigit((unsigned char)s[1])) {
+        return true;
+    }
+    return false;
+}
+#endif
+
+/** \brief  Get keyword name by ID
+ *
+ * \param[in]   kw  keyword ID
+ *
+ * \return  keyword name (or "&gt;invalid&lt;" when \a kw is invalid)
+ */
+static const char *kw_name(keyword_id_t kw)
+{
+    if (kw >= 0 || kw < (keyword_id_t)(sizeof keywords / sizeof keywords[0])) {
+        return keywords[kw];
+    }
+    return "<invalid>";
+}
+
+/** \brief  Determine if keyword is an input type
+ *
+ * \return  \c true if input type
+ */
 static bool kw_is_input_type(keyword_id_t kw)
 {
     return (bool)(kw == VJM_KW_AXIS || kw == VJM_KW_BUTTON || kw == VJM_KW_HAT);
@@ -309,6 +356,8 @@ static joymap_t *joymap_open(const char *path)
 
     pstate.linenum   = 1;
     pstate.buffer[0] = '\0';
+    pstate.curpos    = pstate.buffer;
+    pstate.prevpos   = pstate.buffer;
 
     fp = fopen(path, "r");
     if (fp == NULL) {
@@ -328,6 +377,7 @@ static bool joymap_read_line(joymap_t *joymap)
     pstate.buflen    = 0;
     pstate.buffer[0] = '\0';
     pstate.curpos    = pstate.buffer;
+    pstate.prevpos   = pstate.buffer;
 
     while (true) {
         int ch;
@@ -534,14 +584,76 @@ static bool get_vjm_version(joymap_t *joymap)
     return true;
 }
 
+
+/* "<input-name>" <direction> */
+static joy_mapping_t *get_axis_mapping(joymap_t *joymap)
+{
+    joy_mapping_t *mapping;
+    joy_axis_t    *axis;
+    char          *name;
+    keyword_id_t   direction;
+
+    /* input name */
+    if (!get_quoted_arg(&name)) {
+        parser_log_error("expected axis name");
+        return NULL;
+    }
+    /* input direction */
+    direction = get_keyword();
+    if (!kw_is_axis_direction(direction)) {
+        parser_log_error("expected axis direction argument ('negative' or"
+                         " 'positive'), got '%s'",
+                         pstate.curpos);
+        lib_free(name);
+        return NULL;
+    }
+
+    axis = joy_axis_from_name(joymap->joydev, name);
+    if (axis == NULL) {
+        parser_log_error("invalid axis name: '%s'", name);
+        lib_free(name);
+        return NULL;
+    }
+    if (direction == VJM_KW_NEGATIVE) {
+        mapping = &(axis->negative_mapping);
+    } else {
+        mapping = &(axis->positive_mapping);
+    }
+
+    msg_debug("name = %s, direction = %s\n", name, kw_name(direction));
+    lib_free(name);
+
+    return mapping;
+}
+
+static joy_mapping_t *get_button_mapping(joymap_t *joymap)
+{
+    joy_button_t  *button;
+    char          *name;
+
+    if (!get_quoted_arg(&name)) {
+        parser_log_error("expected button name");
+        return NULL;
+    }
+
+    button = joy_button_from_name(joymap->joydev, name);
+    if (button == NULL) {
+        parser_log_error("invalid button name: '%s'", name);
+        lib_free(name);
+        return NULL;
+    }
+    
+    msg_debug("name = %s\n", name);
+    lib_free(name);
+
+    return &(button->mapping);
+}
+
+
 static bool handle_pin_mapping(joymap_t *joymap)
 {
     int            pin;
     keyword_id_t   input_type;
-    keyword_id_t   input_direction = VJM_KW_NONE;
-    char          *input_name = NULL;
-    joy_axis_t    *axis;
-    joy_button_t  *button;
     joy_mapping_t *mapping;
 
     /* pin number */
@@ -561,7 +673,7 @@ static bool handle_pin_mapping(joymap_t *joymap)
         parser_log_error("expected input type ('axis', 'button' or 'hat')");
         return false;
     }
-
+#if 0
     /* input name */
     if (!get_quoted_arg(&input_name)) {
         parser_log_error("expected input name");
@@ -573,23 +685,25 @@ static bool handle_pin_mapping(joymap_t *joymap)
         input_direction = get_keyword();
         if (!kw_is_direction(input_direction)) {
             parser_log_error("expected direction argument for %s input: '%s'",
-                             keywords[input_type], pstate.curpos);
+                             kw_name(input_type), pstate.curpos);
             lib_free(input_name);
             return false;
         }
     }
-
+#endif
     switch (input_type) {
         case VJM_KW_AXIS:
+            mapping = get_axis_mapping(joymap);
+#if 0
             if (!kw_is_axis_direction(input_direction)) {
                 parser_log_error("invalid axis direction, got '%s', expected "
                                  "'negative' or 'positive'",
-                                 keywords[input_direction]);
+                                 kw_name(input_direction));
                 lib_free(input_name);
                 return false;
             }
             axis = joy_axis_from_name(joymap->joydev, input_name);
-            if (axis == NULL) {
+if (axis == NULL) {
                 parser_log_error("failed to find axis '%s'", input_name);
                 lib_free(input_name);
                 return false;
@@ -601,19 +715,30 @@ static bool handle_pin_mapping(joymap_t *joymap)
             } else {
                 mapping = &(axis->positive_mapping);
             }
+#endif
+            if (mapping == NULL) {
+                return false;
+            }
             mapping->action     = JOY_ACTION_JOYSTICK;
             mapping->target.pin = pin;
             break;
 
         case VJM_KW_BUTTON:
+#if 0
             button = joy_button_from_name(joymap->joydev, input_name);
             if (button == NULL) {
                 parser_log_error("failed to find button '%s'", input_name);
                 lib_free(input_name);
                 return false;
             }
-            button->mapping.action     = JOY_ACTION_JOYSTICK;
-            button->mapping.target.pin = pin;
+#endif
+            mapping = get_button_mapping(joymap);
+            if (mapping == NULL) {
+                /* error already reported */
+                return false;
+            }
+            mapping->action     = JOY_ACTION_JOYSTICK;
+            mapping->target.pin = pin;
             break;
 
         case VJM_KW_HAT:
@@ -625,11 +750,14 @@ static bool handle_pin_mapping(joymap_t *joymap)
             break;
     }
 
+#if 0
     printf("got pin number %d, input type %s, input name %s, input direction %s\n",
-           pin, keywords[input_type], input_name, keywords[input_direction]);
+           pin, kw_name(input_type), input_name, kw_name(input_direction));
     lib_free(input_name);
+#endif
     return true;
 }
+
 
 static bool handle_key_mapping(joymap_t *joymap)
 {
@@ -639,6 +767,8 @@ static bool handle_key_mapping(joymap_t *joymap)
     char         *input_name = NULL;
     keyword_id_t  input_type;
     keyword_id_t  input_direction;
+    joy_axis_t   *axis;
+    joy_mapping_t *mapping;
 
     /* row */
     if (!get_int_arg(&row)) {
@@ -690,14 +820,47 @@ static bool handle_key_mapping(joymap_t *joymap)
         input_direction = get_keyword();
         if (!kw_is_direction(input_direction)) {
             parser_log_error("expected direction argument for %s input",
-                             keywords[input_type]);
+                             kw_name(input_type));
             lib_free(input_name);
             return false;
         }
     }
 
+    switch (input_type) {
+        case VJM_KW_AXIS:
+            if (!kw_is_axis_direction(input_direction)) {
+                parser_log_error("invalid axis direction, got '%s', expected "
+                                 "'negative' or 'positive'",
+                                 kw_name(input_direction));
+                lib_free(input_name);
+                return false;
+            }
+            axis = joy_axis_from_name(joymap->joydev, input_name);
+            if (axis == NULL) {
+                parser_log_error("failed to find axis '%s'", input_name);
+                lib_free(input_name);
+                return false;
+            }
+
+            /* select negative or positive mapping */
+            if (input_direction == VJM_KW_NEGATIVE) {
+                mapping = &(axis->negative_mapping);
+            } else {
+                mapping = &(axis->positive_mapping);
+            }
+            mapping->action            = JOY_ACTION_KEYBOARD;
+            mapping->target.key.row    = row;
+            mapping->target.key.column = column;
+            mapping->target.key.flags  = (unsigned int)flags; 
+            break;
+
+        default:
+            break;
+    }
+
+
     printf("got key column %d, row %d, flags %04x, input type %s, input name %s\n",
-           column, row, (unsigned int)flags, keywords[input_type], input_name); 
+           column, row, (unsigned int)flags, kw_name(input_type), input_name); 
     lib_free(input_name);
     return true;
 }
@@ -742,7 +905,7 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
     bool  result = true;
 
     if (*pstate.curpos == '\0') {
-        parser_log_error("missing data after keyword '%s'", keywords[kw]);
+        parser_log_error("missing data after keyword '%s'", kw_name(kw));
         return false;
     }
 
@@ -803,7 +966,7 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
             break;
 
         default:
-            parser_log_error("unexpected keyword '%s'", keywords[kw]);
+            parser_log_error("unexpected keyword '%s'", kw_name(kw));
             result = false;
             break;
     }
@@ -829,7 +992,7 @@ static bool joymap_parse_line(joymap_t *joymap)
         parser_log_error("unknown keyword: %s", pstate.curpos);
         return false;
     }
-    printf("found keyword: %d: %s\n", (int)kw, keywords[kw]);
+    printf("found keyword: %d: %s\n", (int)kw, kw_name(kw));
 
     return handle_keyword(joymap, kw);
 }
