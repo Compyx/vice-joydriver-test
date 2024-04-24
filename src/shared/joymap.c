@@ -585,7 +585,15 @@ static bool get_vjm_version(joymap_t *joymap)
 }
 
 
-/* "<input-name>" <direction> */
+/** \brief  Get mapping for axis
+ *
+ * Parse current line for axis name and look up axis mapping in \a joymap.
+ * Requires parser to be beyond the input type ('axis').
+ *
+ * \param[in]   joymap  joymap
+ *
+ * \return  mapping or \c NULL on error
+ */
 static joy_mapping_t *get_axis_mapping(joymap_t *joymap)
 {
     joy_mapping_t *mapping;
@@ -626,10 +634,19 @@ static joy_mapping_t *get_axis_mapping(joymap_t *joymap)
     return mapping;
 }
 
+/** \brief  Get mapping for button
+ *
+ * Parse current line for button name and look up button mapping in \a joymap.
+ * Requires parser to be beyond the input type ('button').
+ *
+ * \param[in]   joymap  joymap
+ *
+ * \return  mapping or \c NULL on error
+ */
 static joy_mapping_t *get_button_mapping(joymap_t *joymap)
 {
-    joy_button_t  *button;
-    char          *name;
+    joy_button_t *button;
+    char         *name;
 
     if (!get_quoted_arg(&name)) {
         parser_log_error("expected button name");
@@ -647,6 +664,41 @@ static joy_mapping_t *get_button_mapping(joymap_t *joymap)
     lib_free(name);
 
     return &(button->mapping);
+}
+
+/** \brief  Get mapping for hat
+ *
+ * Parse current line for hat name and look up hat mapping in \a joymap.
+ * Requires parser to be beyond the input type ('hat').
+ *
+ * \param[in]   joymap  joymap
+ *
+ * \return  mapping or \c NULL on error
+ */
+static joy_mapping_t *get_hat_mapping(joymap_t *joymap)
+{
+    joy_hat_t    *hat;
+    char         *name;
+#if 0
+    keyword_id_t  direction;
+#endif
+
+    if (!get_quoted_arg(&name)) {
+        parser_log_error("exected hat name");
+        return NULL;
+    }
+
+    hat = joy_hat_from_name(joymap->joydev, name);
+    if (hat == NULL) {
+        parser_log_error("invalid hat name: '%s'", name);
+        lib_free(name);
+        return NULL;
+    }
+
+    msg_debug("name = %s\n", name);
+    lib_free(name);
+
+    return &(hat->mapping);
 }
 
 
@@ -673,89 +725,34 @@ static bool handle_pin_mapping(joymap_t *joymap)
         parser_log_error("expected input type ('axis', 'button' or 'hat')");
         return false;
     }
-#if 0
-    /* input name */
-    if (!get_quoted_arg(&input_name)) {
-        parser_log_error("expected input name");
-        return false;
-    }
 
-    if (input_type != VJM_KW_BUTTON) {
-        /* axes and hats require a direction argument */
-        input_direction = get_keyword();
-        if (!kw_is_direction(input_direction)) {
-            parser_log_error("expected direction argument for %s input: '%s'",
-                             kw_name(input_type), pstate.curpos);
-            lib_free(input_name);
-            return false;
-        }
-    }
-#endif
     switch (input_type) {
         case VJM_KW_AXIS:
             mapping = get_axis_mapping(joymap);
-#if 0
-            if (!kw_is_axis_direction(input_direction)) {
-                parser_log_error("invalid axis direction, got '%s', expected "
-                                 "'negative' or 'positive'",
-                                 kw_name(input_direction));
-                lib_free(input_name);
-                return false;
-            }
-            axis = joy_axis_from_name(joymap->joydev, input_name);
-if (axis == NULL) {
-                parser_log_error("failed to find axis '%s'", input_name);
-                lib_free(input_name);
-                return false;
-            }
-
-            /* select negative or positive mapping */
-            if (input_direction == VJM_KW_NEGATIVE) {
-                mapping = &(axis->negative_mapping);
-            } else {
-                mapping = &(axis->positive_mapping);
-            }
-#endif
-            if (mapping == NULL) {
-                return false;
-            }
-            mapping->action     = JOY_ACTION_JOYSTICK;
-            mapping->target.pin = pin;
             break;
 
         case VJM_KW_BUTTON:
-#if 0
-            button = joy_button_from_name(joymap->joydev, input_name);
-            if (button == NULL) {
-                parser_log_error("failed to find button '%s'", input_name);
-                lib_free(input_name);
-                return false;
-            }
-#endif
             mapping = get_button_mapping(joymap);
-            if (mapping == NULL) {
-                /* error already reported */
-                return false;
-            }
-            mapping->action     = JOY_ACTION_JOYSTICK;
-            mapping->target.pin = pin;
             break;
 
         case VJM_KW_HAT:
-            parser_log_warning("TODO: mapping pin to hat\n");
+            mapping = get_hat_mapping(joymap);
             break;
 
         default:
             parser_log_error("unhandled input type %d!\n", (int)input_type);
+            mapping = NULL;
             break;
     }
 
-#if 0
-    printf("got pin number %d, input type %s, input name %s, input direction %s\n",
-           pin, kw_name(input_type), input_name, kw_name(input_direction));
-    lib_free(input_name);
-#endif
-    return true;
+    if (mapping != NULL) {
+        msg_debug("mapping to pin %d\n", pin);
+        mapping->action = JOY_ACTION_JOYSTICK;
+        mapping->target.pin = pin;
+        return true;
+    } else {
+        return false;
+    }
 }
 
 
