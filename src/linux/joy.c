@@ -728,9 +728,11 @@ bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
             /* map (first) hat to pins */
             hat = &(joydev->hats[0]);
 
+#if 0
             /* negative direction of X axis */
             hat->x.mapping.negative.action     = JOY_ACTION_JOYSTICK;
             hat->x.mapping.negative.target.pin = JOYSTICK_DIRECTION_LEFT;
+
             /* positive direction of X axis */
             hat->x.mapping.positive.action     = JOY_ACTION_JOYSTICK;
             hat->x.mapping.positive.target.pin = JOYSTICK_DIRECTION_RIGHT;
@@ -741,6 +743,16 @@ bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
             /* positive direction of Y axis */
             hat->y.mapping.positive.action     = JOY_ACTION_JOYSTICK;
             hat->y.mapping.positive.target.pin = JOYSTICK_DIRECTION_DOWN;
+#endif
+            hat->mapping.up.action        = JOY_ACTION_JOYSTICK;
+            hat->mapping.up.target.pin    = JOYSTICK_DIRECTION_UP;
+            hat->mapping.down.action      = JOY_ACTION_JOYSTICK;
+            hat->mapping.down.target.pin  = JOYSTICK_DIRECTION_DOWN;
+            hat->mapping.left.action      = JOY_ACTION_JOYSTICK;
+            hat->mapping.left.target.pin  = JOYSTICK_DIRECTION_LEFT;
+            hat->mapping.right.action     = JOY_ACTION_JOYSTICK;
+            hat->mapping.right.target.pin = JOYSTICK_DIRECTION_RIGHT;
+
         } else if (joydev->num_axes >= 2u) {
             /* assume first axis to be X axis */
             axis = &(joydev->axes[0]);

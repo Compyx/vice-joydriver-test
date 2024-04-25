@@ -358,7 +358,10 @@ void joy_hat_init(joy_hat_t *hat)
     for (size_t i = 0; i < ARRAY_LEN(hat->hat_map); i++) {
         hat->hat_map[i] = JOY_HAT_NEUTRAL;
     }
-    joy_mapping_init(&(hat->mapping));
+    joy_mapping_init(&(hat->mapping.up));
+    joy_mapping_init(&(hat->mapping.down));
+    joy_mapping_init(&(hat->mapping.left));
+    joy_mapping_init(&(hat->mapping.right));
 }
 
 
@@ -586,7 +589,8 @@ void joy_hat_event(joy_device_t *joydev, joy_hat_t *hat, int32_t value)
         return;
     }
 
-    joy_perform_event(joydev, &(hat->mapping), value);
+    /* TODO: figure out which hat direction (up, down, left, right) we need */
+//    joy_perform_event(joydev, &(hat->mapping), value);
     hat->prev = value;
 }
 

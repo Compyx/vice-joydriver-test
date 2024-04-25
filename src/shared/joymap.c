@@ -36,7 +36,6 @@ typedef enum {
     VJM_KW_DEVICE_VENDOR,
     VJM_KW_DEVICE_VERSION,
     VJM_KW_DOWN,
-    VJM_KW_EAST,
     VJM_KW_FIRE1,
     VJM_KW_FIRE2,
     VJM_KW_FIRE3,
@@ -46,19 +45,12 @@ typedef enum {
     VJM_KW_MAP,
     VJM_KW_NEGATIVE,
     VJM_KW_NONE,
-    VJM_KW_NORTH,
-    VJM_KW_NORTHEAST,
-    VJM_KW_NORTHWEST,
     VJM_KW_PIN,
     VJM_KW_POSITIVE,
     VJM_KW_POT,
     VJM_KW_RIGHT,
-    VJM_KW_SOUTH,
-    VJM_KW_SOUTHEAST,
-    VJM_KW_SOUTHWEST,
     VJM_KW_UP,
     VJM_KW_VJM_VERSION,
-    VJM_KW_WEST,
 } keyword_id_t;
 
 /** \brief  Parser state object */
@@ -87,7 +79,6 @@ static const char *keywords[] = {
     "device-vendor",
     "device-version",
     "down",
-    "east",
     "fire1",
     "fire2",
     "fire3",
@@ -97,19 +88,12 @@ static const char *keywords[] = {
     "map",
     "negative",
     "none",
-    "north",
-    "northeast",
-    "northwest",
     "pin",
     "positive",
     "pot",
     "right",
-    "south",
-    "southeast",
-    "southwest",
     "up",
-    "vjm-version",
-    "west",
+    "vjm-version"
 };
 
 
@@ -228,14 +212,6 @@ static bool kw_is_input_type(keyword_id_t kw)
     return (bool)(kw == VJM_KW_AXIS || kw == VJM_KW_BUTTON || kw == VJM_KW_HAT);
 }
 
-static bool kw_is_hat_direction(keyword_id_t kw)
-{
-    return (bool)(kw == VJM_KW_NORTH || kw == VJM_KW_NORTHEAST ||
-                  kw == VJM_KW_EAST  || kw == VJM_KW_SOUTHEAST ||
-                  kw == VJM_KW_SOUTH || kw == VJM_KW_SOUTHWEST ||
-                  kw == VJM_KW_WEST  || kw == VJM_KW_NORTHWEST);
-}
-
 static bool kw_is_joystick_direction(keyword_id_t kw)
 {
     return (bool)(kw == VJM_KW_UP   || kw == VJM_KW_DOWN ||
@@ -249,8 +225,7 @@ static bool kw_is_axis_direction(keyword_id_t kw)
 
 static bool kw_is_direction(keyword_id_t kw)
 {
-    return kw_is_hat_direction(kw) || kw_is_joystick_direction(kw) ||
-        kw_is_axis_direction(kw);
+    return kw_is_axis_direction(kw) || kw_is_joystick_direction(kw);
 }
 
 /** \brief  Determine if pin number is valid
@@ -677,14 +652,21 @@ static joy_mapping_t *get_button_mapping(joymap_t *joymap)
  */
 static joy_mapping_t *get_hat_mapping(joymap_t *joymap)
 {
-    joy_hat_t    *hat;
-    char         *name;
-#if 0
-    keyword_id_t  direction;
-#endif
+    joy_hat_t     *hat;
+    char          *name;
+    keyword_id_t   direction;
+    joy_mapping_t *mapping = NULL;
 
     if (!get_quoted_arg(&name)) {
         parser_log_error("exected hat name");
+        return NULL;
+    }
+
+    direction = get_keyword();
+    if (!kw_is_joystick_direction(direction)) {
+        parser_log_error("invalid direction '%s', expected 'up', 'down', 'left'"
+                         " or 'right'");
+        lib_free(name);
         return NULL;
     }
 
@@ -695,10 +677,29 @@ static joy_mapping_t *get_hat_mapping(joymap_t *joymap)
         return NULL;
     }
 
+    switch (direction) {
+        case VJM_KW_UP:
+            mapping = &(hat->mapping.up);
+            break;
+        case VJM_KW_DOWN:
+            mapping = &(hat->mapping.down);
+            break;
+        case VJM_KW_LEFT:
+            mapping = &(hat->mapping.left);
+            break;
+        case VJM_KW_RIGHT:
+            mapping = &(hat->mapping.right);
+            break;
+        default:
+            parser_log_warning("shouldn't get here!");
+            mapping = NULL;
+            break;
+    }
+
     msg_debug("name = %s\n", name);
     lib_free(name);
 
-    return &(hat->mapping);
+    return mapping;
 }
 
 

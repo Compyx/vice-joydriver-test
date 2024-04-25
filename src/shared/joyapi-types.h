@@ -161,7 +161,12 @@ typedef struct joy_hat_s {
     joy_axis_t           x;         /**< X axis */
     joy_axis_t           y;         /**< Y axis */
     joy_hat_direction_t  hat_map[JOY_HAT_NUM_DIRECTIONS];   /* hat mapping */
-    joy_mapping_t        mapping;   /**< mapping */
+    struct {
+        joy_mapping_t up;       /**< up direction of hat */
+        joy_mapping_t down;     /**< down direction of hat */
+        joy_mapping_t left;     /**< left direction of hat */
+        joy_mapping_t right;    /**< right direction of hat */
+    } mapping;                      /**< mappings of four hat directions */
 } joy_hat_t;
 
 /** \brief  Joystick device object */
