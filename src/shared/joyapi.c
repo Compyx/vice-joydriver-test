@@ -325,9 +325,9 @@ void joy_axis_init(joy_axis_t *axis)
     axis->resolution  = 1;
     axis->granularity = 1;
     axis->digital     = false;
-    joy_mapping_init(&(axis->negative_mapping));
-    joy_mapping_init(&(axis->positive_mapping));
-    joy_mapping_init(&(axis->pot_mapping));
+    joy_mapping_init(&(axis->mapping.negative));
+    joy_mapping_init(&(axis->mapping.positive));
+    joy_mapping_init(&(axis->mapping.pot));
 }
 
 
@@ -524,16 +524,16 @@ void joy_axis_event(joy_device_t *joydev, joy_axis_t *axis, joystick_axis_value_
 
     /* release directions first */
     if (prev == JOY_AXIS_NEGATIVE) {
-        joy_perform_event(joydev, &(axis->negative_mapping), 0);
+        joy_perform_event(joydev, &(axis->mapping.negative), 0);
     } else if (prev == JOY_AXIS_POSITIVE) {
-        joy_perform_event(joydev, &(axis->positive_mapping), 0);
+        joy_perform_event(joydev, &(axis->mapping.positive), 0);
     }
 
     /* new directions */
     if (value == JOY_AXIS_NEGATIVE) {
-        joy_perform_event(joydev, &(axis->negative_mapping), 1);
+        joy_perform_event(joydev, &(axis->mapping.negative), 1);
     } else if (value == JOY_AXIS_POSITIVE) {
-        joy_perform_event(joydev, &(axis->positive_mapping), 1);
+        joy_perform_event(joydev, &(axis->mapping.positive), 1);
     }
 
     /* update previous */

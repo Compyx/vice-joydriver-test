@@ -143,9 +143,11 @@ typedef struct joy_axis_s {
     int32_t        resolution;  /**< resolution of axis (units per mm) */
     uint32_t       granularity; /**< granularity of reported values (Windows) */
     bool           digital;     /**< axis is digital */
-    joy_mapping_t  negative_mapping;    /**< axis negative direction pin mapping */
-    joy_mapping_t  positive_mapping;    /**< axis positive direction pin mapping */
-    joy_mapping_t  pot_mapping;         /**< axis to POT mapping */
+    struct {
+        joy_mapping_t negative; /**< axis negative direction pin mapping */
+        joy_mapping_t positive; /**< axis positive direction pin mapping */
+        joy_mapping_t pot;      /**< axis to POT mapping */
+    } mapping;
 } joy_axis_t;
 
 /** \brief  Joystick hat object

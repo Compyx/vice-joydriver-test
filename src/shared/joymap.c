@@ -623,9 +623,9 @@ static joy_mapping_t *get_axis_mapping(joymap_t *joymap)
         return NULL;
     }
     if (direction == VJM_KW_NEGATIVE) {
-        mapping = &(axis->negative_mapping);
+        mapping = &(axis->mapping.negative);
     } else {
-        mapping = &(axis->positive_mapping);
+        mapping = &(axis->mapping.positive);
     }
 
     msg_debug("name = %s, direction = %s\n", name, kw_name(direction));
@@ -841,9 +841,9 @@ static bool handle_key_mapping(joymap_t *joymap)
 
             /* select negative or positive mapping */
             if (input_direction == VJM_KW_NEGATIVE) {
-                mapping = &(axis->negative_mapping);
+                mapping = &(axis->mapping.negative);
             } else {
-                mapping = &(axis->positive_mapping);
+                mapping = &(axis->mapping.positive);
             }
             mapping->action            = JOY_ACTION_KEYBOARD;
             mapping->target.key.row    = row;
