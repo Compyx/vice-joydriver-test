@@ -16,5 +16,8 @@ map pin 16  button  "BTN_SOUTH"
 map pin 32  button  "BTN_NORTH"
 
 map key 1   2   %01100001   button  "BTN_WEST"
+
+map key 2   3   0           hat     "ABS_HAT0" up
+
 # error:
 #map key 0   0   -1          button  "BTN_EAST"

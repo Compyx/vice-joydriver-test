@@ -223,10 +223,12 @@ static bool kw_is_axis_direction(keyword_id_t kw)
     return (bool)(kw == VJM_KW_NEGATIVE || kw == VJM_KW_POSITIVE);
 }
 
+#if 0
 static bool kw_is_direction(keyword_id_t kw)
 {
     return kw_is_axis_direction(kw) || kw_is_joystick_direction(kw);
 }
+#endif
 
 /** \brief  Determine if pin number is valid
  *
@@ -762,10 +764,7 @@ static bool handle_key_mapping(joymap_t *joymap)
     int           column;
     int           row;
     int           flags;
-    char         *input_name = NULL;
     keyword_id_t  input_type;
-    keyword_id_t  input_direction;
-    joy_axis_t   *axis;
     joy_mapping_t *mapping;
 
     /* row */
@@ -807,60 +806,34 @@ static bool handle_key_mapping(joymap_t *joymap)
         return false;
     }
 
-    /* input name */
-    if (!get_quoted_arg(&input_name)) {
-        parser_log_error("expected input name");
-        return false;
-    }
-
-    if (input_type != VJM_KW_BUTTON) {
-        /* axes and hats require a direction argument */
-        input_direction = get_keyword();
-        if (!kw_is_direction(input_direction)) {
-            parser_log_error("expected direction argument for %s input",
-                             kw_name(input_type));
-            lib_free(input_name);
-            return false;
-        }
-    }
-
     switch (input_type) {
         case VJM_KW_AXIS:
-            if (!kw_is_axis_direction(input_direction)) {
-                parser_log_error("invalid axis direction, got '%s', expected "
-                                 "'negative' or 'positive'",
-                                 kw_name(input_direction));
-                lib_free(input_name);
-                return false;
-            }
-            axis = joy_axis_from_name(joymap->joydev, input_name);
-            if (axis == NULL) {
-                parser_log_error("failed to find axis '%s'", input_name);
-                lib_free(input_name);
-                return false;
-            }
+            mapping = get_axis_mapping(joymap);
+            break;
 
-            /* select negative or positive mapping */
-            if (input_direction == VJM_KW_NEGATIVE) {
-                mapping = &(axis->mapping.negative);
-            } else {
-                mapping = &(axis->mapping.positive);
-            }
-            mapping->action            = JOY_ACTION_KEYBOARD;
-            mapping->target.key.row    = row;
-            mapping->target.key.column = column;
-            mapping->target.key.flags  = (unsigned int)flags; 
+        case VJM_KW_BUTTON:
+            mapping = get_button_mapping(joymap);
+            break;
+
+        case VJM_KW_HAT:
+            mapping = get_hat_mapping(joymap);
             break;
 
         default:
+            parser_log_error("unhandled input type %d!\n", (int)input_type);
+            mapping = NULL;
             break;
     }
 
-
-    printf("got key column %d, row %d, flags %04x, input type %s, input name %s\n",
-           column, row, (unsigned int)flags, kw_name(input_type), input_name); 
-    lib_free(input_name);
-    return true;
+    if (mapping != NULL) {
+        mapping->action            = JOY_ACTION_KEYBOARD;
+        mapping->target.key.row    = row;
+        mapping->target.key.column = column;
+        mapping->target.key.flags  = (unsigned int)flags; 
+        return true;
+    } else {
+        return false;
+    }
 }
 
 static bool handle_mapping(joymap_t *joymap)

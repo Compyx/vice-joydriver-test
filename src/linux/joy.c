@@ -612,9 +612,9 @@ static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
             joy_axis_event(joydev, axis, axis_value);
 
         } else if (event->type == EV_ABS && IS_HAT(event->code)) {
-
-            int32_t x_pins = 0;
-            int32_t y_pins = 0;
+            joy_mapping_t *mapping;
+            int32_t        x_pins = 0;
+            int32_t        y_pins = 0;
 
             hat = joy_hat_from_code(joydev, get_hat_x_for_hat_code(event->code));
             if (hat == NULL) {
@@ -630,8 +630,10 @@ static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
             if (IS_HAT_X_AXIS(event->code)) {
                 axis_value = joy_axis_value_from_hwdata(&(hat->x), event->value);
                 if (axis_value == JOY_AXIS_NEGATIVE) {
+                    mapping = &(hat->mapping.left);
                     x_pins = JOYSTICK_DIRECTION_LEFT;
                 } else if (axis_value == JOY_AXIS_POSITIVE) {
+                    mapping = &(hat->mapping.right);
                     x_pins = JOYSTICK_DIRECTION_RIGHT;
                 }
                 hat->x.prev = x_pins;
@@ -639,15 +641,17 @@ static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
             } else {
                 axis_value = joy_axis_value_from_hwdata(&(hat->y), event->value);
                 if (axis_value == JOY_AXIS_NEGATIVE) {
+                    mapping = &(hat->mapping.up);
                     y_pins = JOYSTICK_DIRECTION_UP;
                 } else if (axis_value == JOY_AXIS_POSITIVE) {
+                    mapping = &(hat->mapping.down);
                     y_pins = JOYSTICK_DIRECTION_DOWN;
                 }
                 hat->y.prev = y_pins;
                 x_pins      = hat->x.prev;
             }
 
-            joy_hat_event(joydev, hat, x_pins|y_pins);
+            joy_hat_event(joydev, hat, mapping, x_pins|y_pins);
         }
     }
 }

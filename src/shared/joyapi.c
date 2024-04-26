@@ -570,7 +570,10 @@ void joy_button_event(joy_device_t *joydev, joy_button_t *button, int32_t value)
  * \param[in]   hat     hat object
  * \param[in]   value   hat value (joystick pins bitmask)
  */
-void joy_hat_event(joy_device_t *joydev, joy_hat_t *hat, int32_t value)
+void joy_hat_event(joy_device_t  *joydev,
+                   joy_hat_t     *hat,
+                   joy_mapping_t *mapping,
+                   int32_t        value)
 {
     int32_t prev;
 
@@ -590,7 +593,7 @@ void joy_hat_event(joy_device_t *joydev, joy_hat_t *hat, int32_t value)
     }
 
     /* TODO: figure out which hat direction (up, down, left, right) we need */
-//    joy_perform_event(joydev, &(hat->mapping), value);
+    joy_perform_event(joydev, mapping, value);
     hat->prev = value;
 }
 
