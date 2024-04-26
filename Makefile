@@ -48,16 +48,17 @@ ifeq ($(UNAME_S),win32)
 endif
 
 PROG = vice-joydriver-test
-OBJS = main.o cmdline.o lib.o joy.o joyapi.o joymap.o
+OBJS = main.o cmdline.o lib.o joy.o joyapi.o joymap.o uiactions.o
 
 all: $(PROG)
 
 cmdline.o: lib.o cmdline.h
 lib.o: lib.h
 joy.o: lib.o joyapi.o joyapi-types.h
-joyapi.o: lib.o joymap.o joyapi.h joyapi-types.h
-joymap.o: lib.o joymap.h joyapi-types.h
+joyapi.o: lib.o joymap.o uiactions.o joyapi.h joyapi-types.h
+joymap.o: lib.o joymap.h uiactions.o joyapi-types.h
 main.o: cmdline.o joy.o joyapi.o lib.o
+uiactions.o: uiactions.h machine.h
 
 $(PROG): $(OBJS)
 	$(LD) -o $@ $^ $(PROG_LDFLAGS) $(LDFLAGS)
