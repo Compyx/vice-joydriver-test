@@ -568,6 +568,7 @@ static int get_ui_action(char **name)
 
     /* copy action name */
     if (quoted) {
+        /* -1 to account for opening quote */
         len = (size_t)(s - pstate.curpos - 1);
     } else {
         len = (size_t)(s - pstate.curpos);
@@ -591,6 +592,13 @@ static int get_ui_action(char **name)
     } else {
         lib_free(action);
     }
+
+    if (quoted) {
+        pstate_update(s + 1);
+    } else {
+        pstate_update(s);
+    }
+
     return id;
 
 
@@ -712,7 +720,7 @@ static joy_mapping_t *get_button_mapping(joymap_t *joymap)
         lib_free(name);
         return NULL;
     }
-    
+
     msg_debug("name = %s\n", name);
     lib_free(name);
 
@@ -914,13 +922,51 @@ static bool handle_key_mapping(joymap_t *joymap)
 
 static bool handle_action_mapping(joymap_t *joymap)
 {
-    char *name;
-    int   id;
+    keyword_id_t   input_type;
+    joy_mapping_t *mapping;
+    int            action_id;
+    char          *action_name = NULL;
 
-    id = get_ui_action(&name);
-    msg_debug("action name: %s, action id %d\n", name, id);
-    lib_free(name);
-    return true;
+    action_id = get_ui_action(&action_name);
+    msg_debug("action name: %s, action id %d\n", action_name, action_id);
+    lib_free(action_name);
+    if (action_id < ACTION_NONE) {
+        return false;
+    }
+
+    /* input type */
+    input_type = get_keyword();
+    if (!kw_is_input_type(input_type)) {
+        parser_log_error("expected input type ('axis', 'button' or 'hat')");
+        return false;
+    }
+
+    switch (input_type) {
+        case VJM_KW_AXIS:
+            mapping = get_axis_mapping(joymap);
+            break;
+
+        case VJM_KW_BUTTON:
+            mapping = get_button_mapping(joymap);
+            break;
+
+        case VJM_KW_HAT:
+            mapping = get_hat_mapping(joymap);
+            break;
+
+        default:
+            parser_log_error("unhandled input type %d!\n", (int)input_type);
+            mapping = NULL;
+            break;
+    }
+
+    if (mapping != NULL) {
+        mapping->action = JOY_ACTION_UI_ACTION;
+        mapping->target.ui_action = action_id;
+        return true;
+    } else {
+        return false;
+    }
 }
 
 static bool handle_mapping(joymap_t *joymap)

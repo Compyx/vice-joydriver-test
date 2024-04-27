@@ -16,6 +16,7 @@
 #include <limits.h>
 
 #include "lib.h"
+#include "uiactions.h"
 
 #include "joyapi.h"
 
@@ -491,7 +492,8 @@ static void joy_perform_event(joy_device_t  *joydev,
                    joydev->port, event->target.pot == JOY_POTX ? 'X' : 'Y', value);
             break;
         case JOY_ACTION_UI_ACTION:
-            printf("event: UI ACTION: id: %"PRId32"\n", value);
+            printf("event: value: %"PRId32", UI ACTION %d (%s)\n",
+                    value, event->target.ui_action, ui_action_get_name(event->target.ui_action));
             break;
         case JOY_ACTION_UI_ACTIVATE:
             printf("event: UI ACTIVATE\n");
