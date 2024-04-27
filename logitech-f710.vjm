@@ -19,5 +19,8 @@ map key 1   2   %01100001   button  "BTN_WEST"
 
 map key 2   3   0           hat     "ABS_HAT0" up
 
+map action machine-power-cycle
+map action "drive-attach-8:0"
+
 # error:
 #map key 0   0   -1          button  "BTN_EAST"

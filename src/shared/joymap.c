@@ -16,6 +16,7 @@
 #include "joyapi.h"
 #include "keyboard.h"
 #include "lib.h"
+#include "uiactions.h"
 
 #include "joymap.h"
 
@@ -525,6 +526,81 @@ static bool get_int_arg(int *value)
     return true;
 }
 
+/** \brief  Get action ID from current position in line buffer
+ *
+ * Get action name (optionally quoted with double quotes) and look up its ID.
+ * If \a name is not \c NULL the action name parsed will be stored in \a name,
+ * to be freed by the caller with \c lib_free(). This includes action names
+ * that match the pattern for action names but for which an ID wasn't found.
+ * Any errors during parsing or when looking up an ID will be reported by this
+ * function.
+ *
+ * \param[out]  name    action name found, including invalid ones (can be \c NULL)
+ *
+ * \return  action ID (or \c ACTION_INVALID) when not found
+ *
+ * \note    free \c name with \c lib_free() if not set to \c NULL
+ */
+static int get_ui_action(char **name)
+{
+    char   *s;
+    char   *action;
+    size_t  len;
+    int     id;
+    bool    quoted = false;
+
+    len = 0;
+    s   = pstate.curpos;
+    if (*s == '"') {
+        quoted = true;
+        s++;
+    }
+
+    //    printf("action name quoted = %s\n", quoted ? "TRUE" : "FALSE");
+    while (IS_ACTION_NAME_CHAR(*s)) {
+        s++;
+    }
+    if (quoted && *s != '"') {
+        /* missing closing quote */
+        parser_log_error("missing closing quote in UI action name");
+        goto exit_err;
+    }
+
+    /* copy action name */
+    if (quoted) {
+        len = (size_t)(s - pstate.curpos - 1);
+    } else {
+        len = (size_t)(s - pstate.curpos);
+    }
+    if (len == 0) {
+        parser_log_error("missing action name");
+        goto exit_err;
+    }
+
+    action = lib_malloc(len + 1u);
+    memcpy(action, pstate.curpos + (quoted ? 1 : 0), len);
+    action[len] = '\0';
+
+    id = ui_action_get_id(action);
+    if (id < ACTION_NONE) {
+        parser_log_error("invalid action name '%s'", action);
+    }
+
+    if (name != NULL) {
+        *name = action;
+    } else {
+        lib_free(action);
+    }
+    return id;
+
+
+exit_err:
+    if (name != NULL) {
+        *name = NULL;
+    }
+    return ACTION_INVALID;
+}
+
 
 static bool get_vjm_version(joymap_t *joymap)
 {
@@ -836,6 +912,17 @@ static bool handle_key_mapping(joymap_t *joymap)
     }
 }
 
+static bool handle_action_mapping(joymap_t *joymap)
+{
+    char *name;
+    int   id;
+
+    id = get_ui_action(&name);
+    msg_debug("action name: %s, action id %d\n", name, id);
+    lib_free(name);
+    return true;
+}
+
 static bool handle_mapping(joymap_t *joymap)
 {
     bool result = true;
@@ -856,7 +943,8 @@ static bool handle_mapping(joymap_t *joymap)
             break;
 
         case VJM_KW_ACTION:
-            parser_log_warning("TODO: handle 'action'");
+            result = handle_action_mapping(joymap);
+//            parser_log_warning("TODO: handle 'action'");
             break;
 
         default:
