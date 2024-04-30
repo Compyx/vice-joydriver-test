@@ -77,7 +77,7 @@ typedef struct hwdata_s {
  * \param[in]   code    event code
  * \return  \c true if axis
  */
-#define IS_AXIS(code) (((code) >= ABS_X && (code) < ABS_HAT0X) || ((code) >= ABS_PRESSURE && (code) <= ABS_MISC))
+#define IS_AXIS(code) ((code) >= ABS_X && (code) < ABS_MISC)
 
 /** \brief  Test if an event code is a button event code
  *
@@ -85,28 +85,6 @@ typedef struct hwdata_s {
  * \return  \c true if button
  */
 #define IS_BUTTON(code) ((code) >= BTN_JOYSTICK && (code) <= BTN_THUMBR)
-
-/** \brief  Test if an event code is a hat axis code
- *
- * \param[in]   code    event code
- * \return  \c true if hat
- */
-#define IS_HAT(code) ((code) >= ABS_HAT0X) && ((code) <= ABS_HAT3Y)
-
-#define IS_HAT_X_AXIS(code) ((code) == ABS_HAT0X || (code) == ABS_HAT1X || \
-                             (code) == ABS_HAT2X || (code) == ABS_HAT3X)
-
-#define IS_HAT_Y_AXIS(code) ((code) == ABS_HAT0Y || (code) == ABS_HAT1Y || \
-                             (code) == ABS_HAT2Y || (code) == ABS_HAT3Y)
-
-
-/** \brief X and Y axes for the four hats found in `linux/input-event-codes.h` */
-static const hat_evcode_t hat_event_codes[] = {
-    { ABS_HAT0X, ABS_HAT0Y },
-    { ABS_HAT1X, ABS_HAT1Y },
-    { ABS_HAT2X, ABS_HAT2Y },
-    { ABS_HAT3X, ABS_HAT3Y }
-};
 
 
 static hwdata_t *hwdata_new(void)
@@ -131,26 +109,6 @@ static void hwdata_free(void *hwdata)
         }
     }
     lib_free(hwdata);
-}
-
-static const char *get_hat_name(unsigned int code)
-{
-    switch (code) {
-        case ABS_HAT0X: /* fall through */
-        case ABS_HAT0Y:
-            return "ABS_HAT0";
-        case ABS_HAT1X: /* fall through */
-        case ABS_HAT1Y:
-            return "ABS_HAT1";
-        case ABS_HAT2X: /* fall through */
-        case ABS_HAT2Y:
-            return "ABS_HAT2";
-        case ABS_HAT3X: /* fall through */
-        case ABS_HAT3Y:
-            return "ABS_HAT3";
-        default:
-            return NULL;
-    }
 }
 
 static int node_filter(const struct dirent *de)
@@ -244,7 +202,7 @@ static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
         joydev->axes = lib_malloc(size * sizeof *(joydev->axes));
 
         for (code = ABS_X; code < ABS_RESERVED && num < UINT16_MAX; code++) {
-            if (!IS_HAT(code) && libevdev_has_event_code(evdev, EV_ABS, code)) {
+            if (libevdev_has_event_code(evdev, EV_ABS, code)) {
                 const struct input_absinfo *absinfo;
                 joy_axis_t                 *axis;
 
@@ -281,78 +239,6 @@ static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
     joydev->num_axes = num;
 }
 
-static void scan_hats(joy_device_t *joydev, struct libevdev *evdev)
-{
-    uint32_t num = 0;
-
-    if (libevdev_has_event_type(evdev, EV_ABS)) {
-        size_t h;
-
-        /* only four hats defined in `input-event-codes.h`, so we simply allocate
-         * space for four hats */
-        joydev->hats = lib_malloc(HATS_INITIAL_SIZE * sizeof *(joydev->hats));
-
-        for (h = 0; h < ARRAY_LEN(hat_event_codes); h++) {
-            uint16_t x_code = hat_event_codes[h].x;
-            uint16_t y_code = hat_event_codes[h].y;
-
-            if (libevdev_has_event_code(evdev, EV_ABS, x_code) &&
-                    libevdev_has_event_code(evdev, EV_ABS, y_code)) {
-
-                const struct input_absinfo *absinfo;
-                joy_hat_t                  *hat;
-                joy_axis_t                 *x_axis;
-                joy_axis_t                 *y_axis;
-
-                hat    = &(joydev->hats[num]);
-                x_axis = &(hat->x);
-                y_axis = &(hat->y);
-                joy_hat_init(hat);  /* also initializes the axes */
-
-                /* X axis */
-                absinfo = libevdev_get_abs_info(evdev, x_code);
-                x_axis->code = x_code;
-                x_axis->name = lib_strdup(libevdev_event_code_get_name(EV_ABS, x_code));
-                if (absinfo != NULL) {
-                    x_axis->minimum    = absinfo->minimum;
-                    x_axis->maximum    = absinfo->maximum;
-                    x_axis->fuzz       = absinfo->fuzz;
-                    x_axis->flat       = absinfo->flat;
-                    x_axis->resolution = absinfo->resolution;
-                } else {
-                    x_axis->minimum    = INT16_MIN;
-                    x_axis->maximum    = INT16_MAX;
-                }
-                x_axis->digital = axis_is_digital(x_axis);
-
-                /* Y axis */
-                absinfo = libevdev_get_abs_info(evdev, y_code);
-                y_axis->code = y_code;
-                y_axis->name = lib_strdup(libevdev_event_code_get_name(EV_ABS, y_code));
-                if (absinfo != NULL) {
-                    y_axis->minimum    = absinfo->minimum;
-                    y_axis->maximum    = absinfo->maximum;
-                    y_axis->fuzz       = absinfo->fuzz;
-                    y_axis->flat       = absinfo->flat;
-                    y_axis->resolution = absinfo->resolution;
-                } else {
-                    y_axis->minimum    = INT16_MIN;
-                    y_axis->maximum    = INT16_MAX;
-                }
-                y_axis->digital = axis_is_digital(y_axis);
-
-                hat->name = lib_strdup(get_hat_name(x_code));
-                hat->code = x_code;
-                //printf("hat name = %s\n", hat->name);
-
-                num++;
-            }
-        }
-    }
-
-    joydev->num_hats = num;
-}
-
 static joy_device_t *get_device_data(const char *node)
 {
     struct libevdev *evdev;
@@ -387,7 +273,7 @@ static joy_device_t *get_device_data(const char *node)
 
     scan_buttons(joydev, evdev);
     scan_axes(joydev, evdev);
-    scan_hats(joydev, evdev);
+    joydev->num_hats = 0;
 
     joydev->hwdata = hwdata_new();
 
@@ -520,69 +406,8 @@ static void joydev_close(joy_device_t *joydev)
     }
 }
 
-#if 0
-static int hat_to_joy_direction(int code, int value)
-{
-    int direction = 0;
-
-    /* This currently assumes hats are reported with values of -1, 0 or 1,
-     * which appears to be true for the controllers I have. */
-
-    switch (code) {
-        case ABS_HAT0X:
-        case ABS_HAT1X:
-        case ABS_HAT2X:
-        case ABS_HAT3X:
-            if (value < 0) {
-                direction = JOYSTICK_DIRECTION_LEFT;
-            } else if (value == 0) {
-                direction = JOYSTICK_DIRECTION_NONE;
-            } else {
-                direction = JOYSTICK_DIRECTION_RIGHT;
-            }
-            break;
-        case ABS_HAT0Y:
-        case ABS_HAT1Y:
-        case ABS_HAT2Y:
-        case ABS_HAT3Y:
-            if (value < 0) {
-                direction = JOYSTICK_DIRECTION_UP;
-            } else if (value == 0) {
-                direction = JOYSTICK_DIRECTION_NONE;
-            } else {
-                direction = JOYSTICK_DIRECTION_DOWN;
-            }
-            break;
-        default:
-            break;
-    }
-    return direction;
-}
-#endif
-
-static uint16_t get_hat_x_for_hat_code(uint16_t code)
-{
-    switch (code) {
-        case ABS_HAT0X:
-        case ABS_HAT0Y:
-            return ABS_HAT0X;
-        case ABS_HAT1X:
-        case ABS_HAT1Y:
-            return ABS_HAT1X;
-        case ABS_HAT2X:
-        case ABS_HAT2Y:
-            return ABS_HAT2X;
-        case ABS_HAT3X:
-        case ABS_HAT3Y:
-            return ABS_HAT3X;
-        default:
-            return 0;
-    }
-}
-
 static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
 {
-    joy_hat_t             *hat;
     joy_axis_t            *axis;
     joystick_axis_value_t  axis_value;
 
@@ -610,52 +435,9 @@ static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
             axis       = joy_axis_from_code(joydev, event->code);
             axis_value = joy_axis_value_from_hwdata(axis, event->value);
             joy_axis_event(joydev, axis, axis_value);
-
-        } else if (event->type == EV_ABS && IS_HAT(event->code)) {
-            joy_mapping_t *mapping;
-            int32_t        x_pins = 0;
-            int32_t        y_pins = 0;
-
-            hat = joy_hat_from_code(joydev, get_hat_x_for_hat_code(event->code));
-            if (hat == NULL) {
-                msg_error("hat is NULL\n");
-                return;
-            }
-
-            /* On Linux we don't have hats as a single object but rather two
-             * axes combined into a "virtual" hat. The values for this "hat"
-             * come in with two separate event codes, one for each axis, so
-             * we combine the current axis of a hat with the previous value of
-             * the hat's other axis to determine the actual hat value: */
-            if (IS_HAT_X_AXIS(event->code)) {
-                axis_value = joy_axis_value_from_hwdata(&(hat->x), event->value);
-                if (axis_value == JOY_AXIS_NEGATIVE) {
-                    mapping = &(hat->mapping.left);
-                    x_pins = JOYSTICK_DIRECTION_LEFT;
-                } else if (axis_value == JOY_AXIS_POSITIVE) {
-                    mapping = &(hat->mapping.right);
-                    x_pins = JOYSTICK_DIRECTION_RIGHT;
-                }
-                hat->x.prev = x_pins;
-                y_pins      = hat->y.prev;
-            } else {
-                axis_value = joy_axis_value_from_hwdata(&(hat->y), event->value);
-                if (axis_value == JOY_AXIS_NEGATIVE) {
-                    mapping = &(hat->mapping.up);
-                    y_pins = JOYSTICK_DIRECTION_UP;
-                } else if (axis_value == JOY_AXIS_POSITIVE) {
-                    mapping = &(hat->mapping.down);
-                    y_pins = JOYSTICK_DIRECTION_DOWN;
-                }
-                hat->y.prev = y_pins;
-                x_pins      = hat->x.prev;
-            }
-
-            joy_hat_event(joydev, hat, mapping, x_pins|y_pins);
         }
     }
 }
-
 
 static bool joydev_poll(joy_device_t *joydev)
 {
@@ -731,23 +513,6 @@ bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
             printf("%s(): got at least one hat\n", __func__);
             /* map (first) hat to pins */
             hat = &(joydev->hats[0]);
-
-#if 0
-            /* negative direction of X axis */
-            hat->x.mapping.negative.action     = JOY_ACTION_JOYSTICK;
-            hat->x.mapping.negative.target.pin = JOYSTICK_DIRECTION_LEFT;
-
-            /* positive direction of X axis */
-            hat->x.mapping.positive.action     = JOY_ACTION_JOYSTICK;
-            hat->x.mapping.positive.target.pin = JOYSTICK_DIRECTION_RIGHT;
-
-            /* negative direction of Y axis */
-            hat->y.mapping.negative.action     = JOY_ACTION_JOYSTICK;
-            hat->y.mapping.negative.target.pin = JOYSTICK_DIRECTION_UP;
-            /* positive direction of Y axis */
-            hat->y.mapping.positive.action     = JOY_ACTION_JOYSTICK;
-            hat->y.mapping.positive.target.pin = JOYSTICK_DIRECTION_DOWN;
-#endif
             hat->mapping.up.action        = JOY_ACTION_JOYSTICK;
             hat->mapping.up.target.pin    = JOYSTICK_DIRECTION_UP;
             hat->mapping.down.action      = JOY_ACTION_JOYSTICK;

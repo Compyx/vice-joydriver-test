@@ -155,8 +155,6 @@ void joy_device_free(joy_device_t *joydev)
 
     if (joydev->hats != NULL) {
         for (i = 0; i < joydev->num_hats; i++) {
-            lib_free(joydev->hats[i].x.name);
-            lib_free(joydev->hats[i].y.name);
             lib_free(joydev->hats[i].name);
         }
         lib_free(joydev->hats);
@@ -354,8 +352,6 @@ void joy_hat_init(joy_hat_t *hat)
     hat->name = NULL;
     hat->code = 0;
     hat->prev = 0;
-    joy_axis_init(&(hat->x));
-    joy_axis_init(&(hat->y));
     for (size_t i = 0; i < ARRAY_LEN(hat->hat_map); i++) {
         hat->hat_map[i] = JOY_HAT_NEUTRAL;
     }

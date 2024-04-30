@@ -158,8 +158,6 @@ typedef struct joy_hat_s {
     uint16_t             code;      /**< code in case of USB hat switch (BSD) */
     char                *name;      /**< name */
     int32_t              prev;      /**< previous value (Windows) */
-    joy_axis_t           x;         /**< X axis */
-    joy_axis_t           y;         /**< Y axis */
     joy_hat_direction_t  hat_map[JOY_HAT_NUM_DIRECTIONS];   /* hat mapping */
     struct {
         joy_mapping_t up;       /**< up direction of hat */

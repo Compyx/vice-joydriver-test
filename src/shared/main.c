@@ -247,17 +247,8 @@ static bool list_hats(void)
 
             for (uint32_t h = 0; h < joydev->num_hats; h++) {
                 joy_hat_t *hat = &(joydev->hats[h]);
-                joy_axis_t *x = &(hat->x);
-                joy_axis_t *y = &(hat->y);
 
-                printf("%2x: %s (%s)\n", h, hat->name, x->digital ? "digital" : "analog");
-                if (verbose) {
-                    printf("    X axis: code: %04x, name: %s, range: %"PRId32" - %"PRId32"\n",
-                           x->code, x->name, x->minimum, x->maximum);
-                    printf("    Y axis: code: %04x, name: %s, range: %"PRId32" - %"PRId32"\n",
-                           y->code, y->name, y->minimum, y->maximum);
-                }
-
+                printf("%2x: %s\n", h, hat->name);
             }
         }
     }
