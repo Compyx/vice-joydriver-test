@@ -1,3 +1,4 @@
+# vim: set noet ts=8 sw=8 sts=8
 #CC = gcc
 #LD = $(CC)
 VPATH = src/shared
@@ -47,10 +48,15 @@ ifeq ($(UNAME_S),win32)
 	VPATH += :src/win32
 endif
 
-PROG = vice-joydriver-test
-OBJS = main.o cmdline.o lib.o joy.o joyapi.o joymap.o uiactions.o
+PROG_SDL_CFLAGS = $(PROG_CFLAGS) `sdl2-config --cflags` -DUSE_SDL
+PROG_SDL_LDFLAGS = $(PROG_LDFLAGS) `sdl2-config --libs`
 
-all: $(PROG)
+PROG = vice-joydriver-test
+PROG_SDL = vice-joydriver-test-sdl
+OBJS = cmdline.o lib.o joy.o joyapi.o joymap.o uiactions.o
+OBJS_SDL = cmdline.o lib.o joy-sdl.o joyapi.o joymap.o uiactions.o
+
+all: $(PROG) $(PROG_SDL)
 
 cmdline.o: lib.o cmdline.h
 lib.o: lib.h
@@ -58,14 +64,24 @@ joy.o: lib.o joyapi.o joyapi-types.h
 joyapi.o: lib.o joymap.o uiactions.o joyapi.h joyapi-types.h
 joymap.o: lib.o joymap.h uiactions.o joyapi-types.h
 main.o: cmdline.o joy.o joyapi.o lib.o
+main-sdl.o: cmdline.o joy.o joyapi.o lib.o
 uiactions.o: uiactions.h machine.h
 
-$(PROG): $(OBJS)
+$(PROG): main.o $(OBJS)
 	$(LD) -o $@ $^ $(PROG_LDFLAGS) $(LDFLAGS)
+
+$(PROG_SDL): main-sdl.o $(OBJS_SDL)
+	$(LD) -o $@ $^ $(PROG_SDL_LDFLAGS) $(LDFLAGS)
 
 %.o: %.c
 	$(CC) $(PROG_CFLAGS) $(CFLAGS) -c -o $@ $<
 
+main-sdl.o: main.c
+	$(CC) $(PROG_SDL_CFLAGS) $(CFLAGS) -c -o $@ $<
+
+joy-sdl.o: src/sdl/joy.c
+	$(CC) $(PROG_SDL_CFLAGS) $(CFLAGS) -c -o $@ $<
+
 .PHONY: clean
 clean:
-	rm -rfd $(PROG) $(OBJS)
+	rm -rfd $(PROG) $(PROG_SDL) $(OBJS) main.o main-sdl.o joy-sdl.o

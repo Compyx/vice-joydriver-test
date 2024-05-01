@@ -9,10 +9,10 @@ Very much a work in progress.
 
 ### Shared code
 
-Custom mappings (via .vjm files) are partially implemented: buttons and axes
-can be mapped to emulated devices' buttons and directions.
-Still to do is mapping to emulated keys (including with flags such as shifted),
-UI actions and non-binary POT values (e.g. mapping axes to mouse or paddle
+Custom mappings (via .vjm files) are partially implemented: axes, buttons and
+hats can be mapped to emulated devices' buttons and directions, emulated keys
+and UI actions.
+Still TODO are non-binary POT values (e.g. mapping axes to mouse or paddle
 inputs).
 
 ### Linux
@@ -40,6 +40,7 @@ events are passed to the generic joystick code.
 ### Linux
 
 - libevdev (`sudo apt install libevdev-dev`)
+- SDL2 (`sudo apt install libsdl2-dev`)
 
 ### NetBSD
 
@@ -60,8 +61,8 @@ Unsupported.
 
 ## Command line program
 
-The test driver program is currently called `vice-joydriver-test`, and supports
-a few command line options:
+The test driver program is currently called `vice-joydriver-test[-sdl]`, and
+supports a few command line options:
 
 | Option                  | Argument     | Description                                      |
 | ----------------------- | ------------ | ------------------------------------------------ |
