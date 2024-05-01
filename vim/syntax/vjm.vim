@@ -11,7 +11,7 @@ syn match vjmKeyword        "\<vjm-version\>"
 syn match vjmKeyword        "\<device-\(name\|product\|vendor\|version\)\>"
 syn keyword vjmKeyword      map
 syn keyword vjmInputType    action axis button hat key pin pot
-syn keyword vjmDirection    north northeast east southeast south southwest west northwest negative positive
+syn keyword vjmDirection    up down left right negative positive
 
 syn match vjmComment        "[#;].*$" contains=vjmTodo
 
