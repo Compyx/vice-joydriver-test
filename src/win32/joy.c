@@ -209,32 +209,13 @@ static BOOL EnumObjects_hats_cb(LPCDIDEVICEOBJECTINSTANCE ddoi, LPVOID pvref)
 {
     hat_iter_t *iter = pvref;
     joy_hat_t  *hat;
-    joy_axis_t *x_axis;
-    joy_axis_t *y_axis;
 
     RESIZE_LIST_ITER(iter);
 
     hat = &(iter->list[iter->index++]);
-    x_axis = &(hat->x);
-    y_axis = &(hat->y);
 
     hat->name = lib_strdup(ddoi->tszName);
     msg_debug("hat name = %s\n", hat->name);
-
-    /* POVs are apparently mapped as a single integer indicating degrees of
-     * view.
-     * For now let's just map the two axis with (-1,1)
-     */
-    joy_axis_init(x_axis);
-    joy_axis_init(y_axis);
-    x_axis->code    = 0;
-    x_axis->name    = lib_strdup("X axis");
-    x_axis->minimum = -1;
-    x_axis->maximum =  1;
-    y_axis->code    = 1u;
-    y_axis->name    = lib_strdup("Y axis");
-    y_axis->minimum = -1;
-    y_axis->maximum =  1;
 
     return DIENUM_CONTINUE;
 }
@@ -487,7 +468,19 @@ static bool joydev_poll(joy_device_t *joydev)
                 direction = JOYSTICK_DIRECTION_LEFT|JOYSTICK_DIRECTION_UP;
             }
 
-            joy_hat_event(joydev, hat, direction);
+            /* TODO: what about releasing directions? */
+            if (direction & JOYSTICK_DIRECTION_UP) {
+                joy_hat_event(joydev, hat, &hat->mapping.up, direction);
+            }
+            if (direction & JOYSTICK_DIRECTION_DOWN) {
+                joy_hat_event(joydev, hat, &hat->mapping.down, direction);
+            }
+            if (direction & JOYSTICK_DIRECTION_LEFT) {
+                joy_hat_event(joydev, hat, &hat->mapping.left, direction);
+            }
+            if (direction & JOYSTICK_DIRECTION_RIGHT) {
+                joy_hat_event(joydev, hat, &hat->mapping.right, direction);
+            }
         }
     }
 

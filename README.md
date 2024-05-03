@@ -53,6 +53,7 @@ events are passed to the generic joystick code.
 ### Windows
 
 - msys2
+- SDL2 (`pacman -S ${MINGW_PACKAGE_PREFIX}-SDL2`
 
 ### MacOS
 
