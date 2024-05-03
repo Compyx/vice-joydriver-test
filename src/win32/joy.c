@@ -443,48 +443,30 @@ static bool joydev_poll(joy_device_t *joydev)
         int32_t    newval    = (int32_t)(jstate.rgdwPOV[h]);
         int32_t    direction = JOYSTICK_DIRECTION_NONE;
 
-        if (newval != hat->prev) {
-            hat->prev = newval;
-
-            /* POVs map to 360 degrees, in units of 100th of a degree */
-            /* -1 / 0xffffffff is neutral, also discard invalid values */
-            if (newval < 0 || newval >= 36000) {
-                direction = JOYSTICK_DIRECTION_NONE;
-            } else if (newval >= 33750 || newval <  2250) {
-                direction = JOYSTICK_DIRECTION_UP;
-            } else if (newval >=  2250 && newval <  6750) {
-                direction = JOYSTICK_DIRECTION_UP|JOYSTICK_DIRECTION_RIGHT;
-            } else if (newval >=  6750 && newval < 11250) {
-                direction = JOYSTICK_DIRECTION_RIGHT;
-            } else if (newval >= 11250 && newval < 15750) {
-                direction = JOYSTICK_DIRECTION_RIGHT|JOYSTICK_DIRECTION_DOWN;
-            } else if (newval >= 15750 && newval < 20250) {
-                direction = JOYSTICK_DIRECTION_DOWN;
-            } else if (newval >= 20250 && newval < 24750) {
-                direction = JOYSTICK_DIRECTION_DOWN|JOYSTICK_DIRECTION_LEFT;
-            } else if (newval >= 24750 && newval < 29250) {
-                direction = JOYSTICK_DIRECTION_LEFT;
-            } else if (newval >= 29250 && newval < 33750) {
-                direction = JOYSTICK_DIRECTION_LEFT|JOYSTICK_DIRECTION_UP;
-            }
-
-            /* TODO: what about releasing directions? */
-            if (direction & JOYSTICK_DIRECTION_UP) {
-                joy_hat_event(joydev, hat, &hat->mapping.up, direction);
-            }
-            if (direction & JOYSTICK_DIRECTION_DOWN) {
-                joy_hat_event(joydev, hat, &hat->mapping.down, direction);
-            }
-            if (direction & JOYSTICK_DIRECTION_LEFT) {
-                joy_hat_event(joydev, hat, &hat->mapping.left, direction);
-            }
-            if (direction & JOYSTICK_DIRECTION_RIGHT) {
-                joy_hat_event(joydev, hat, &hat->mapping.right, direction);
-            }
+        /* POVs map to 360 degrees, in units of 100th of a degree */
+        /* -1 / 0xffffffff is neutral, also discard invalid values */
+        if (newval < 0 || newval >= 36000) {
+            direction = JOYSTICK_DIRECTION_NONE;
+        } else if (newval >= 33750 || newval <  2250) {
+            direction = JOYSTICK_DIRECTION_UP;
+        } else if (newval >=  2250 && newval <  6750) {
+            direction = JOYSTICK_DIRECTION_UP|JOYSTICK_DIRECTION_RIGHT;
+        } else if (newval >=  6750 && newval < 11250) {
+            direction = JOYSTICK_DIRECTION_RIGHT;
+        } else if (newval >= 11250 && newval < 15750) {
+            direction = JOYSTICK_DIRECTION_RIGHT|JOYSTICK_DIRECTION_DOWN;
+        } else if (newval >= 15750 && newval < 20250) {
+            direction = JOYSTICK_DIRECTION_DOWN;
+        } else if (newval >= 20250 && newval < 24750) {
+            direction = JOYSTICK_DIRECTION_DOWN|JOYSTICK_DIRECTION_LEFT;
+        } else if (newval >= 24750 && newval < 29250) {
+            direction = JOYSTICK_DIRECTION_LEFT;
+        } else if (newval >= 29250 && newval < 33750) {
+            direction = JOYSTICK_DIRECTION_LEFT|JOYSTICK_DIRECTION_UP;
         }
+
+        joy_hat_event(joydev, hat, direction);
     }
-
-
     return true;
 }
 
