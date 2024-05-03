@@ -488,8 +488,10 @@ static void joy_perform_event(joy_device_t  *joydev,
                    joydev->port, event->target.pot == JOY_POTX ? 'X' : 'Y', value);
             break;
         case JOY_ACTION_UI_ACTION:
-            printf("event: value: %"PRId32", UI ACTION %d (%s)\n",
-                    value, event->target.ui_action, ui_action_get_name(event->target.ui_action));
+            if (value) {
+                printf("event: value: %"PRId32", UI ACTION %d (%s)\n",
+                        value, event->target.ui_action, ui_action_get_name(event->target.ui_action));
+            }
             break;
         case JOY_ACTION_UI_ACTIVATE:
             printf("event: UI ACTIVATE\n");
@@ -570,28 +572,47 @@ void joy_button_event(joy_device_t *joydev, joy_button_t *button, int32_t value)
  */
 void joy_hat_event(joy_device_t  *joydev,
                    joy_hat_t     *hat,
-                   joy_mapping_t *mapping,
                    int32_t        value)
 {
-    int32_t prev;
+    joy_mapping_t *up;
+    joy_mapping_t *down;
+    joy_mapping_t *left;
+    joy_mapping_t *right;
+    int32_t        prev;
 
     if (hat == NULL) {
         msg_error("`hat` is NULL\n");
         return;
     }
-
-    msg_verbose("hat event: %s: %s (%"PRIx16"), value: %"PRId32": %s\n",
-                joydev->name, hat->name, hat->code, value,
-                joy_direction_name((uint32_t)value));
-
-    /* TODO: latch/unlatch pins */
     prev = hat->prev;
     if (prev == value) {
         return;
     }
 
-    /* TODO: figure out which hat direction (up, down, left, right) we need */
-    joy_perform_event(joydev, mapping, value);
+    up    = &hat->mapping.up;
+    down  = &hat->mapping.down;
+    left  = &hat->mapping.left;
+    right = &hat->mapping.right;
+
+    msg_verbose("hat event: %s: %s (%"PRIx16"), value: %"PRId32": %s\n",
+                joydev->name, hat->name, hat->code, value,
+                joy_direction_name((uint32_t)value));
+
+    /* the following will also send "release" events for UI actions, but
+     * joy_perform_event() will handle (ignore) those */
+    if ((prev & JOYSTICK_DIRECTION_UP) != (value & JOYSTICK_DIRECTION_UP)) {
+        joy_perform_event(joydev, up, value & JOYSTICK_DIRECTION_UP ? 1 : 0);
+    }
+    if ((prev & JOYSTICK_DIRECTION_DOWN) != (value & JOYSTICK_DIRECTION_DOWN)) {
+        joy_perform_event(joydev, down, value & JOYSTICK_DIRECTION_DOWN ? 1 : 0);
+    }
+    if ((prev & JOYSTICK_DIRECTION_LEFT) != (value & JOYSTICK_DIRECTION_LEFT)) {
+        joy_perform_event(joydev, left, value & JOYSTICK_DIRECTION_LEFT ? 1 : 0);
+    }
+    if ((prev & JOYSTICK_DIRECTION_RIGHT) != (value & JOYSTICK_DIRECTION_RIGHT)) {
+        joy_perform_event(joydev, right, value & JOYSTICK_DIRECTION_RIGHT ? 1 : 0);
+    }
+
     hat->prev = value;
 }
 

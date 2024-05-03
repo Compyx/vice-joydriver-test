@@ -56,7 +56,7 @@ joystick_axis_value_t joy_axis_value_from_hwdata(joy_axis_t *axis, int32_t hw_va
 
 void          joy_axis_event  (joy_device_t *joydev, joy_axis_t *axis, joystick_axis_value_t value);
 void          joy_button_event(joy_device_t *joydev, joy_button_t *button, int32_t value);
-void          joy_hat_event   (joy_device_t *joydev, joy_hat_t *hat, joy_mapping_t *mapping, int32_t value);
+void          joy_hat_event   (joy_device_t *joydev, joy_hat_t *hat, int32_t value);
 
 bool          joy_open (joy_device_t *joydev);
 bool          joy_poll (joy_device_t *joydev);
