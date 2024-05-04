@@ -39,6 +39,7 @@ void       *lib_realloc(void *ptr, size_t size);
 void        lib_free(void *ptr);
 char       *lib_strdup(const char *s);
 char       *lib_strndup(const char *s, size_t n);
+char       *lib_msprintf(const char *fmt, ...);
 void        lib_strrtrim(char *s);
 const char *lib_basename(const char *s);
 

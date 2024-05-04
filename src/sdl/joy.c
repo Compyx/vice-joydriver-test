@@ -77,14 +77,11 @@ static bool scan_axes(joy_device_t *joydev, SDL_Joystick *sdldev)
 
     joydev->axes = lib_malloc((size_t)naxes * sizeof *(joydev->axes));
     for (int a = 0; a < naxes; a++) {
-        joy_axis_t *axis;
-        char        name[64];
+        joy_axis_t *axis = &joydev->axes[a];
 
-        axis = &joydev->axes[a];
         joy_axis_init(axis);
-        snprintf(name, sizeof name - 1u, "Axis_%d", a);
         axis->code = (uint16_t)a;
-        axis->name = lib_strdup(name);
+        axis->name = lib_msprintf("Axis_%d", a);
         axis->minimum = INT16_MIN;
         axis->maximum = INT16_MAX;
     }
@@ -107,14 +104,11 @@ static bool scan_buttons(joy_device_t *joydev, SDL_Joystick *sdldev)
 
     joydev->buttons = lib_malloc((size_t)nbuttons * sizeof *joydev->buttons);
     for (int b = 0; b < nbuttons; b++) {
-        joy_button_t *button;
-        char          name[64];
+        joy_button_t *button = &joydev->buttons[b];
 
-        button = &joydev->buttons[b];
         joy_button_init(button);
-        snprintf(name, sizeof name - 1u, "Button_%d", b);
         button->code = (uint16_t)b;
-        button->name = lib_strdup(name);
+        button->name = lib_msprintf("Button_%d", b);
     }
     return true;
 }
@@ -134,14 +128,11 @@ static bool scan_hats(joy_device_t *joydev, SDL_Joystick *sdldev)
 
     joydev->hats = lib_malloc((size_t)nhats * sizeof *joydev->hats);
     for (int h = 0; h < nhats; h++) {
-        joy_hat_t *hat;
-        char       name[64];
+        joy_hat_t *hat = &joydev->hats[h];
 
-        hat = &joydev->hats[h];
         joy_hat_init(hat);
-        snprintf(name, sizeof name - 1u, "Hat_%d", h);
         hat->code = (uint16_t)h;
-        hat->name = lib_strdup(name);
+        hat->name = lib_msprintf("Hat_%d", h);
     }
 
     return true;

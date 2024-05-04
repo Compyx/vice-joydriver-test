@@ -136,6 +136,32 @@ char *util_concat(const char *s, ...)
 }
 
 
+char *lib_msprintf(const char *fmt, ...)
+{
+    char    *s;
+    va_list  ap;
+    size_t   size;
+    int      len;
+
+    /* determine required size */
+    va_start(ap, fmt);
+    len = vsnprintf(NULL, 0, fmt, ap);
+    va_end(ap);
+    if (len < 0) {
+        return NULL;
+    }
+
+    /* allocate appropriate size */
+    size = (size_t)len + 1u;
+    s = lib_malloc(size);
+
+    va_start(ap, fmt);
+    len = vsnprintf(s, size, fmt, ap);
+    va_end(ap);
+    return s;
+}
+
+
 /** \brief  Right-trim string
  *
  * Remove trailing whitespace from string \a s, replacing each instance with
