@@ -16,11 +16,14 @@
 extern bool debug;
 extern bool verbose;
 
+/** \brief  SDL-specific device data */
 typedef struct hwdata_s {
-    int index;
+    SDL_Joystick   *dev;    /**< SDL joystick handle */
+    SDL_JoystickID  id;     /**< SDL joystick instance ID */
+    int             index;  /**< index used for SDL_JoystickOpen() */
 } hwdata_t;
 
-
+/** \brief  We've properly initialized SDL's joystick subsystem */
 static bool sdl_initialized = false;
 
 
@@ -28,39 +31,25 @@ static hwdata_t *hwdata_new(void)
 {
     hwdata_t *hwdata = lib_malloc(sizeof *hwdata);
 
-    hwdata->index = -1;
+    hwdata->dev    = NULL;
+    hwdata->id     = 0;
+    hwdata->index  = -1;
     return hwdata;
 }
 
 static void hwdata_free(void *hwdata)
 {
-    lib_free(hwdata);
-}
+    hwdata_t *hw = hwdata;
 
-
-
-
-/* minimal code to make the main program link */
-
-bool joy_arch_init(void)
-{
-    printf("Initializing SDL2 ... ");
-    if (SDL_Init(SDL_INIT_JOYSTICK) != 0) {
-        printf("failed: %s\n", SDL_GetError());
-        return false;
-    }
-    sdl_initialized = true;
-    printf("OK\n");
-    return true;
-}
-
-
-void joy_arch_shutdown(void)
-{
-    if (sdl_initialized) {
-        SDL_Quit();
+    if (hw != NULL) {
+        if (hw->dev != NULL) {
+            SDL_JoystickClose(hw->dev);
+        }
+        lib_free(hw);
     }
 }
+
+
 
 static bool scan_axes(joy_device_t *joydev, SDL_Joystick *sdldev)
 {
@@ -102,7 +91,7 @@ static bool scan_buttons(joy_device_t *joydev, SDL_Joystick *sdldev)
         return true;
     }
 
-    joydev->buttons = lib_malloc((size_t)nbuttons * sizeof *joydev->buttons);
+joydev->buttons = lib_malloc((size_t)nbuttons * sizeof *joydev->buttons);
     for (int b = 0; b < nbuttons; b++) {
         joy_button_t *button = &joydev->buttons[b];
 
@@ -145,6 +134,7 @@ static joy_device_t *get_device_data(SDL_Joystick *sdldev, int index)
 
     hwdata          = hwdata_new();
     hwdata->index   = index;
+    hwdata->id      = SDL_JoystickInstanceID(sdldev);
 
     joydev          = joy_device_new();
     joydev->hwdata  = hwdata;
@@ -217,4 +207,118 @@ bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
     (void)(joydev);
     printf("%s(): stub\n", __func__);
     return true;
+}
+
+
+
+static bool joydev_open(joy_device_t *joydev)
+{
+    hwdata_t *hwdata = joydev->hwdata;
+
+    hwdata->dev = SDL_JoystickOpen(hwdata->index);
+    if (hwdata->dev == NULL) {
+        msg_error("failed to open joystick device %d (\"%s\"): %s\n",
+                  hwdata->index, joydev->name, SDL_GetError());
+        return false;
+    }
+    return true;
+}
+
+static void joydev_close(joy_device_t *joydev)
+{
+    hwdata_t *hwdata = joydev->hwdata;
+
+    if (hwdata != NULL) {
+        if (hwdata->dev != NULL) {
+            SDL_JoystickClose(hwdata->dev);
+            hwdata->dev = NULL;
+        }
+    }
+}
+
+static bool joydev_poll(joy_device_t *joydev)
+{
+    SDL_Event     event;
+    joy_axis_t   *axis;
+    joy_button_t *button;
+    joy_hat_t    *hat;
+    uint16_t      code;
+
+    while (SDL_PollEvent(&event)) {
+
+        switch (event.type) {
+            case SDL_JOYAXISMOTION:
+                code = event.jaxis.axis;
+                axis = joy_axis_from_code(joydev, code);
+                if (axis == NULL) {
+                    fprintf(stderr, "invalid axis code %04x\n", (unsigned int)code);
+                    return false;
+                }
+                printf("%s(): EVENT: joy axis %d (%s) motion: %d\n",
+                       __func__, (int)code, axis->name, (int)event.jaxis.value);
+                break;
+            case SDL_JOYBUTTONDOWN: /* fall through */
+            case SDL_JOYBUTTONUP:
+                code   = event.jbutton.button;
+                button = joy_button_from_code(joydev, code);
+                if (button == NULL) {
+                    fprintf(stderr, "invalid button code %04x\n", (unsigned int)code);
+                    return false;
+                }
+                printf("%s(): EVENT: joy button %d (%s) %s\n",
+                       __func__, (int)code, button->name,
+                       event.jbutton.state == SDL_PRESSED ? "pressed" : "released");
+                break;
+            case SDL_JOYHATMOTION:
+                code = event.jhat.hat;
+                hat  = joy_hat_from_code(joydev, code);
+                if (hat == NULL) {
+                    fprintf(stderr, "invalid hat code %04x\n", (unsigned int)code);
+                    return false;
+                }
+                printf("%s(): EVENT: hat %d (%s) motion: %d\n",
+                       __func__, (int)code, hat->name, event.jhat.value);
+                break;
+            case SDL_JOYDEVICEADDED:
+                printf("%s(): EVENT: joy device ADDED\n", __func__);
+                break;
+            case SDL_JOYDEVICEREMOVED:
+                printf("%s(): EVENT: joy device REMOVED\n", __func__);
+                break;
+            default:
+                /* ignore event */
+                break;
+        }
+    }
+    return true;
+}
+
+
+bool joy_arch_init(void)
+{
+    joy_driver_t driver = {
+        .open        = joydev_open,
+        .close       = joydev_close,
+        .poll        = joydev_poll,
+        .hwdata_free = hwdata_free
+    };
+
+    printf("Initializing SDL2 ... ");
+    if (SDL_Init(SDL_INIT_JOYSTICK) != 0) {
+        printf("failed: %s\n", SDL_GetError());
+        return false;
+    }
+    sdl_initialized = true;
+    printf("OK\n");
+
+    joy_driver_register(&driver);
+    return true;
+}
+
+
+void joy_arch_shutdown(void)
+{
+    if (sdl_initialized) {
+        SDL_Quit();
+    }
 }
