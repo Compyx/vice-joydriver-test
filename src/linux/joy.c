@@ -495,6 +495,12 @@ bool joy_arch_init(void)
 }
 
 
+void joy_arch_shutdown(void)
+{
+    /* NOP for now */
+}
+
+
 bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
 {
     joy_mapping_t *mapping;

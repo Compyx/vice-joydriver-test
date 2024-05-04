@@ -372,10 +372,8 @@ poll_exit:
 
 int main(int argc, char **argv)
 {
-    int  status          = EXIT_SUCCESS;
-#ifdef USE_SDL
-    bool sdl_initialized = false;
-#endif
+    int status = EXIT_SUCCESS;
+
     cmdline_init(PROGRAM_NAME, PROGRAM_VERSION);
     if (!cmdline_add_options(options)) {
         cmdline_free();
@@ -400,18 +398,6 @@ int main(int argc, char **argv)
     printf("Driver: " DRIVER "\n");
 
     /* initialize SDL if building for SDL */
-#ifdef USE_SDL
-    printf("Initializing SDL2 .. ");
-    if (SDL_Init(SDL_INIT_GAMECONTROLLER) != 0) {
-        printf("failed: %s\n", SDL_GetError());
-        status = EXIT_FAILURE;
-        goto cleanup;
-    }
-    sdl_initialized = true;
-    printf("OK\n");
-#endif
-
-
     /* initialize arch-specific joy system */
     joy_init();
 
@@ -492,15 +478,8 @@ int main(int argc, char **argv)
 cleanup:
     joy_device_list_free(devices);
     joymap_module_shutdown();
+    joy_shutdown();
     cmdline_free();
     lib_free(opt_joymap_file);
-
-    /* properly deinitialize SDL if previously initialized */
-#ifdef USE_SDL
-    if (sdl_initialized) {
-        SDL_Quit();
-    }
-#endif
-
     return status;
 }

@@ -743,3 +743,9 @@ bool joy_init(void)
     /* just this for now */
     return joy_arch_init();
 }
+
+
+void joy_shutdown(void)
+{
+    joy_arch_shutdown();
+}

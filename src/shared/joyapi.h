@@ -17,12 +17,14 @@
  */
 
 bool          joy_arch_init(void);
+void          joy_arch_shutdown(void);
 int           joy_arch_device_list_init(joy_device_t ***devices);
 bool          joy_arch_device_create_default_mapping(joy_device_t *joydev);
 
 /* Shared code */
 
 bool          joy_init(void);
+void          joy_shutdown(void);
 
 void          joy_driver_register(const joy_driver_t *drv);
 int           joy_device_list_init     (joy_device_t ***devices);
