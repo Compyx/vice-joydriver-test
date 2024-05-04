@@ -175,7 +175,6 @@ static bool axis_is_digital(joy_axis_t *axis)
     if (axis->minimum == -1 && axis->maximum == 1) {
         /* definitely digital */
         return true;
-        axis->digital = true;
     } else if (axis->flat == 0 && axis->fuzz == 0 && axis->resolution == 0) {
         /* most likely digital */
         /* XXX: SDL uses this logic, but it doesn't work correctly

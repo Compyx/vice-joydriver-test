@@ -171,7 +171,7 @@ static bool list_buttons(void)
             fprintf(stderr,
                     "%s: error: failed to find device %s, skipping.\n",
                     cmdline_get_prg_name(), args[i]);
-        } else if (joydev->num_buttons == 0) {
+        } else if (joydev->num_buttons == 0 || joydev->buttons == NULL) {
             printf("No buttons for device found.\n");
         } else {
             printf("Buttons for device %s (\"%s\"):\n", args[i], joydev->name);
@@ -207,7 +207,7 @@ static bool list_axes(void)
             fprintf(stderr,
                     "%s: error: failed to find device %s, skipping.\n",
                     cmdline_get_prg_name(), args[i]);
-        } else  if (joydev->num_axes == 0) {
+        } else  if (joydev->num_axes == 0 || joydev->axes == NULL) {
             printf("No axes for device found.\n");
         } else {
             printf("Axes for device %s (\"%s\"):\n", args[i], joydev->name);
@@ -244,7 +244,7 @@ static bool list_hats(void)
             fprintf(stderr,
                     "%s: error: failed to find device %s, skipping.\n",
                     cmdline_get_prg_name(), args[i]);
-        } else  if (joydev->num_hats == 0) {
+        } else  if (joydev->num_hats == 0 || joydev->hats == NULL) {
             printf("No hats for device found.\n");
         } else {
             printf("Hats for device %s (\"%s\"):\n", args[i], joydev->name);
