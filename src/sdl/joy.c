@@ -65,6 +65,30 @@ static void hwdata_free(void *hwdata)
     }
 }
 
+/** \brief  Translate SDL hat direction to VICE hat direction
+ *
+ * \param[in]   value   SDL hat direction
+ *
+ * \return  VICE hat direction
+ */
+static int32_t sdl_hat_direction_to_vice(uint8_t value)
+{
+    int32_t direction = 0;
+
+    if (value & SDL_HAT_UP) {
+        direction |= JOYSTICK_DIRECTION_UP;
+    }
+    if (value & SDL_HAT_DOWN) {
+        direction |= JOYSTICK_DIRECTION_DOWN;
+    }
+    if (value & SDL_HAT_LEFT) {
+        direction |= JOYSTICK_DIRECTION_LEFT;
+    }
+    if (value & SDL_HAT_RIGHT) {
+        direction |= JOYSTICK_DIRECTION_RIGHT;
+    }
+    return direction;
+}
 
 /** \brief  Scan device for axes and their properties
  *
@@ -263,8 +287,53 @@ int joy_arch_device_list_init(joy_device_t ***devices)
  */
 bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
 {
-    (void)(joydev);
-    printf("%s(): TODO\n", __func__);
+    joy_mapping_t *mapping;
+    joy_axis_t    *axis;
+    joy_button_t  *button;
+    joy_hat_t     *hat;
+
+    if (joydev->capabilities == JOY_CAPS_NONE) {
+        msg_error("no capabilities for device %s\n", joydev->name);
+        return false;
+    }
+
+    if (joydev->capabilities & JOY_CAPS_JOYSTICK) {
+        if (joydev->num_hats >= 1u) {
+            /* map (first) hat to pins */
+            hat = &(joydev->hats[0]);
+            hat->mapping.up.action        = JOY_ACTION_JOYSTICK;
+            hat->mapping.up.target.pin    = JOYSTICK_DIRECTION_UP;
+            hat->mapping.down.action      = JOY_ACTION_JOYSTICK;
+            hat->mapping.down.target.pin  = JOYSTICK_DIRECTION_DOWN;
+            hat->mapping.left.action      = JOY_ACTION_JOYSTICK;
+            hat->mapping.left.target.pin  = JOYSTICK_DIRECTION_LEFT;
+            hat->mapping.right.action     = JOY_ACTION_JOYSTICK;
+            hat->mapping.right.target.pin = JOYSTICK_DIRECTION_RIGHT;
+        } else if (joydev->num_axes >= 2u) {
+            /* assume first axis to be X axis */
+            axis = &(joydev->axes[0]);
+            /* negative -> left */
+            axis->mapping.negative.action     = JOY_ACTION_JOYSTICK;
+            axis->mapping.positive.target.pin = JOYSTICK_DIRECTION_LEFT;
+            /* positive -> right */
+            axis->mapping.positive.action     = JOY_ACTION_JOYSTICK;
+            axis->mapping.positive.target.pin = JOYSTICK_DIRECTION_RIGHT;
+
+            /* second axis: X axis */
+            axis = &(joydev->axes[1]);
+            /* negative -> up */
+            axis->mapping.negative.action     = JOY_ACTION_JOYSTICK;
+            axis->mapping.negative.target.pin = JOYSTICK_DIRECTION_UP;
+            /* positive -> down */
+            axis->mapping.positive.action     = JOY_ACTION_JOYSTICK;
+            axis->mapping.positive.target.pin = JOYSTICK_DIRECTION_DOWN;
+        }
+
+        button  = &(joydev->buttons[0]);
+        mapping = &(button->mapping);
+        mapping->action     = JOY_ACTION_JOYSTICK;
+        mapping->target.pin = 16;
+    }
     return true;
 }
 
@@ -325,7 +394,6 @@ static bool joydev_poll(joy_device_t *joydev)
     uint16_t      code;
 
     while (SDL_PollEvent(&event)) {
-
         switch (event.type) {
             case SDL_JOYAXISMOTION:
                 code = event.jaxis.axis;
@@ -336,7 +404,9 @@ static bool joydev_poll(joy_device_t *joydev)
                 }
                 printf("%s(): EVENT: joy axis %d (%s) motion: %d\n",
                        __func__, (int)code, axis->name, (int)event.jaxis.value);
+                joy_axis_event(joydev, axis, event.jaxis.value);
                 break;
+
             case SDL_JOYBUTTONDOWN: /* fall through */
             case SDL_JOYBUTTONUP:
                 code   = event.jbutton.button;
@@ -348,7 +418,9 @@ static bool joydev_poll(joy_device_t *joydev)
                 printf("%s(): EVENT: joy button %d (%s) %s\n",
                        __func__, (int)code, button->name,
                        event.jbutton.state == SDL_PRESSED ? "pressed" : "released");
+                joy_button_event(joydev, button, event.jbutton.state);
                 break;
+
             case SDL_JOYHATMOTION:
                 code = event.jhat.hat;
                 hat  = joy_hat_from_code(joydev, code);
@@ -358,21 +430,23 @@ static bool joydev_poll(joy_device_t *joydev)
                 }
                 printf("%s(): EVENT: hat %d (%s) motion: %d\n",
                        __func__, (int)code, hat->name, event.jhat.value);
+                joy_hat_event(joydev, hat, sdl_hat_direction_to_vice(event.jhat.value));
                 break;
+
             case SDL_JOYDEVICEADDED:
                 printf("%s(): EVENT: joy device ADDED: index = %d\n",
                        __func__, event.jdevice.which);
                 break;
+
             case SDL_JOYDEVICEREMOVED:
                 hwdata = joydev->hwdata;
-
                 if (hwdata->id == event.jdevice.which) {
                     printf("%s(): EVENT: joy device REMOVED\n", __func__);
                     /* the current device was removed */
                     return false;
                 }
-
                 break;
+
             default:
                 /* ignore event */
                 break;
