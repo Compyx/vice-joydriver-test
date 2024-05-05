@@ -13,6 +13,7 @@
 #include "joyapi.h"
 #include "lib.h"
 
+/* external symbols */
 extern bool debug;
 extern bool verbose;
 
@@ -23,10 +24,19 @@ typedef struct hwdata_s {
     int             index;  /**< index used for SDL_JoystickOpen() */
 } hwdata_t;
 
-/** \brief  We've properly initialized SDL's joystick subsystem */
+
+/** \brief  We've properly initialized SDL's joystick subsystem
+ *
+ * Used by \c joy_arch_shutdown() to call \c SQL_Quit() if initialization was
+ * successful.
+ */
 static bool sdl_initialized = false;
 
 
+/** \brief  Allocate SDL-specific data for joystick devices
+ *
+ * \return   new hwdata object, initialized
+ */
 static hwdata_t *hwdata_new(void)
 {
     hwdata_t *hwdata = lib_malloc(sizeof *hwdata);
@@ -37,6 +47,12 @@ static hwdata_t *hwdata_new(void)
     return hwdata;
 }
 
+/** \brief  Free SDL-specific data for joystick device
+ *
+ * Should not be called directly, will be called by \c joy_device_free().
+ *
+ * \param[in]   hwdata  SDL-specific data
+ */
 static void hwdata_free(void *hwdata)
 {
     hwdata_t *hw = hwdata;
@@ -50,7 +66,13 @@ static void hwdata_free(void *hwdata)
 }
 
 
-
+/** \brief  Scan device for axes and their properties
+ *
+ * \param[in]   joydev  VICE joystick device
+ * \param[in]   sdldev  SDL joystick device
+ *
+ * \return  \c true on success
+ */
 static bool scan_axes(joy_device_t *joydev, SDL_Joystick *sdldev)
 {
     int naxes = SDL_JoystickNumAxes(sdldev);
@@ -71,13 +93,19 @@ static bool scan_axes(joy_device_t *joydev, SDL_Joystick *sdldev)
         joy_axis_init(axis);
         axis->code = (uint16_t)a;
         axis->name = lib_msprintf("Axis_%d", a);
-        axis->minimum = INT16_MIN;
-        axis->maximum = INT16_MAX;
+        axis->minimum = SDL_JOYSTICK_AXIS_MIN;
+        axis->maximum = SDL_JOYSTICK_AXIS_MAX;
     }
-
     return true;
 }
 
+/** \brief  Scan device for buttons and their properties
+ *
+ * \param[in]   joydev  VICE joystick device
+ * \param[in]   sdldev  SDL joystick device
+ *
+ * \return  \c true on success
+ */
 static bool scan_buttons(joy_device_t *joydev, SDL_Joystick *sdldev)
 {
     int nbuttons = SDL_JoystickNumButtons(sdldev);
@@ -91,7 +119,7 @@ static bool scan_buttons(joy_device_t *joydev, SDL_Joystick *sdldev)
         return true;
     }
 
-joydev->buttons = lib_malloc((size_t)nbuttons * sizeof *joydev->buttons);
+    joydev->buttons = lib_malloc((size_t)nbuttons * sizeof *joydev->buttons);
     for (int b = 0; b < nbuttons; b++) {
         joy_button_t *button = &joydev->buttons[b];
 
@@ -102,6 +130,13 @@ joydev->buttons = lib_malloc((size_t)nbuttons * sizeof *joydev->buttons);
     return true;
 }
 
+/** \brief  Scan device for hats and their properties
+ *
+ * \param[in]   joydev  VICE joystick device
+ * \param[in]   sdldev  SDL joystick device
+ *
+ * \return  \c true on success
+ */
 static bool scan_hats(joy_device_t *joydev, SDL_Joystick *sdldev)
 {
     int nhats = SDL_JoystickNumHats(sdldev);
@@ -110,7 +145,7 @@ static bool scan_hats(joy_device_t *joydev, SDL_Joystick *sdldev)
         msg_error("failed to get number of hats: %s\n", SDL_GetError());
         return false;
     }
-    joydev->num_hats = (uint16_t)nhats;
+    joydev->num_hats = (uint32_t)nhats;
     if (nhats == 0) {
         return true;
     }
@@ -123,10 +158,19 @@ static bool scan_hats(joy_device_t *joydev, SDL_Joystick *sdldev)
         hat->code = (uint16_t)h;
         hat->name = lib_msprintf("Hat_%d", h);
     }
-
     return true;
 }
 
+/** \brief  Get device information and create joystick object
+ *
+ * Obtain device name, node, vendor, product, product version, axes, buttons
+ * and hats.
+ *
+ * \param[in]   sdldev  SDL joystick device
+ * \param[in]   index   index of device according to SDL
+ *
+ * \return  new joystick object, or \c NULL on failure
+ */
 static joy_device_t *get_device_data(SDL_Joystick *sdldev, int index)
 {
     joy_device_t *joydev;
@@ -157,11 +201,19 @@ static joy_device_t *get_device_data(SDL_Joystick *sdldev, int index)
     return joydev;
 
 exit_err:
+    /* clean up */
     hwdata_free(hwdata);
     joy_device_free(joydev);
     return NULL;
 }
 
+
+/** \brief  Generate list of connected joystick devices
+ *
+ * \param[out]  devices list of joystick devices
+ *
+ * \return  number of devices in \a devices, or -1 on error
+ */
 int joy_arch_device_list_init(joy_device_t ***devices)
 {
     joy_device_t **joylist;
@@ -202,15 +254,29 @@ int joy_arch_device_list_init(joy_device_t ***devices)
     return joy_idx;
 }
 
+
+/** \brief  Create default mapping for a device
+ *
+ * \param[in]   joydev  joystick device
+ *
+ * \return  \c true on success
+ */
 bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
 {
     (void)(joydev);
-    printf("%s(): stub\n", __func__);
+    printf("%s(): TODO\n", __func__);
     return true;
 }
 
 
-
+/** \brief  Open joystick device for polling
+ *
+ * Implements the driver's \c joy_open() callback.
+ *
+ * \param[in]   joydev  joystick device
+ *
+ * \return  \c true on success
+ */
 static bool joydev_open(joy_device_t *joydev)
 {
     hwdata_t *hwdata = joydev->hwdata;
@@ -224,6 +290,12 @@ static bool joydev_open(joy_device_t *joydev)
     return true;
 }
 
+/** \brief  Close joystick device
+ *
+ * Implements the driver's \c joy_close() method.
+ *
+ * \param[in]   joydev  joystick device
+ */
 static void joydev_close(joy_device_t *joydev)
 {
     hwdata_t *hwdata = joydev->hwdata;
@@ -236,12 +308,20 @@ static void joydev_close(joy_device_t *joydev)
     }
 }
 
+/** \brief  Poll joystick device and trigger joystick events
+ *
+ * \param[in]   joydev  joystick device
+ *
+ * \return  \c true on success, \c false indicates an error and signals the
+ *          joystick core code to stop polling
+ */
 static bool joydev_poll(joy_device_t *joydev)
 {
-    SDL_Event     event;
     joy_axis_t   *axis;
     joy_button_t *button;
     joy_hat_t    *hat;
+    hwdata_t     *hwdata;
+    SDL_Event     event;
     uint16_t      code;
 
     while (SDL_PollEvent(&event)) {
@@ -280,10 +360,18 @@ static bool joydev_poll(joy_device_t *joydev)
                        __func__, (int)code, hat->name, event.jhat.value);
                 break;
             case SDL_JOYDEVICEADDED:
-                printf("%s(): EVENT: joy device ADDED\n", __func__);
+                printf("%s(): EVENT: joy device ADDED: index = %d\n",
+                       __func__, event.jdevice.which);
                 break;
             case SDL_JOYDEVICEREMOVED:
-                printf("%s(): EVENT: joy device REMOVED\n", __func__);
+                hwdata = joydev->hwdata;
+
+                if (hwdata->id == event.jdevice.which) {
+                    printf("%s(): EVENT: joy device REMOVED\n", __func__);
+                    /* the current device was removed */
+                    return false;
+                }
+
                 break;
             default:
                 /* ignore event */
@@ -294,6 +382,10 @@ static bool joydev_poll(joy_device_t *joydev)
 }
 
 
+/** \brief  Initialize SDL2 joystick subsystem and register driver
+ *
+ * \return  \c true on success
+ */
 bool joy_arch_init(void)
 {
     joy_driver_t driver = {
@@ -316,6 +408,11 @@ bool joy_arch_init(void)
 }
 
 
+/** \brief  Shut down driver and its associated resources
+ *
+ * Currently only calls \c SDL_Quit() if SDL was previously successfully
+ * initialized.
+ */
 void joy_arch_shutdown(void)
 {
     if (sdl_initialized) {

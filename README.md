@@ -5,7 +5,7 @@ joystick drivers for the non-SDL UIs in [VICE](https://github.com/VICE-Team/svn-
 Very much a work in progress.
 
 
-## Current status (2024-04-16)
+## Current status (2024-05-05)
 
 ### Shared code
 
@@ -14,6 +14,10 @@ hats can be mapped to emulated devices' buttons and directions, emulated keys
 and UI actions.
 Still TODO are non-binary POT values (e.g. mapping axes to mouse or paddle
 inputs).
+
+### SDL2
+
+Scanning devices for capabilities work, polling works.
 
 ### Linux
 
