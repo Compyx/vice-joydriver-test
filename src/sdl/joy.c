@@ -245,8 +245,10 @@ int joy_arch_device_list_init(joy_device_t ***devices)
     int            num_sdl;
 
     num_sdl = SDL_NumJoysticks();
+#if 0
     printf("%s(): %d %s connected\n",
            __func__, num_sdl, num_sdl == 1 ? "joystick" : "joysticks");
+#endif
     if (num_sdl == 0) {
         *devices = NULL;
         return 0;
@@ -259,12 +261,10 @@ int joy_arch_device_list_init(joy_device_t ***devices)
         SDL_Joystick *sdldev = SDL_JoystickOpen(n);
 
         if (sdldev == NULL) {
-            fprintf(stderr, "failed to open joystick %d: %s\n", n, SDL_GetError());
+            msg_error("failed to open joystick %d: %s\n", n, SDL_GetError());
         } else {
-            joy_device_t *joydev;
+            joy_device_t *joydev = get_device_data(sdldev, n);
 
-            printf("Adding joydev %d: %s\n", n, SDL_JoystickName(sdldev));
-            joydev = get_device_data(sdldev, n);
             if (joydev != NULL) {
                 joylist[joy_idx++] = joydev;
             }
@@ -399,11 +399,11 @@ static bool joydev_poll(joy_device_t *joydev)
                 code = event.jaxis.axis;
                 axis = joy_axis_from_code(joydev, code);
                 if (axis == NULL) {
-                    fprintf(stderr, "invalid axis code %04x\n", (unsigned int)code);
+                    msg_error("invalid axis code %04x\n", (unsigned int)code);
                     return false;
                 }
-                printf("%s(): EVENT: joy axis %d (%s) motion: %d\n",
-                       __func__, (int)code, axis->name, (int)event.jaxis.value);
+                msg_debug("EVENT: joy axis %d (%s) motion: %d\n",
+                          (int)code, axis->name, (int)event.jaxis.value);
                 joy_axis_event(joydev, axis, event.jaxis.value);
                 break;
 
@@ -412,12 +412,12 @@ static bool joydev_poll(joy_device_t *joydev)
                 code   = event.jbutton.button;
                 button = joy_button_from_code(joydev, code);
                 if (button == NULL) {
-                    fprintf(stderr, "invalid button code %04x\n", (unsigned int)code);
+                    msg_error("invalid button code %04x\n", (unsigned int)code);
                     return false;
                 }
-                printf("%s(): EVENT: joy button %d (%s) %s\n",
-                       __func__, (int)code, button->name,
-                       event.jbutton.state == SDL_PRESSED ? "pressed" : "released");
+                msg_debug("EVENT: joy button %d (%s) %s\n",
+                          (int)code, button->name,
+                          event.jbutton.state == SDL_PRESSED ? "pressed" : "released");
                 joy_button_event(joydev, button, event.jbutton.state);
                 break;
 
@@ -425,23 +425,22 @@ static bool joydev_poll(joy_device_t *joydev)
                 code = event.jhat.hat;
                 hat  = joy_hat_from_code(joydev, code);
                 if (hat == NULL) {
-                    fprintf(stderr, "invalid hat code %04x\n", (unsigned int)code);
+                    msg_error("invalid hat code %04x\n", (unsigned int)code);
                     return false;
                 }
-                printf("%s(): EVENT: hat %d (%s) motion: %d\n",
-                       __func__, (int)code, hat->name, event.jhat.value);
+                msg_debug("EVENT: hat %d (%s) motion: %d\n",
+                          (int)code, hat->name, event.jhat.value);
                 joy_hat_event(joydev, hat, sdl_hat_direction_to_vice(event.jhat.value));
                 break;
 
             case SDL_JOYDEVICEADDED:
-                printf("%s(): EVENT: joy device ADDED: index = %d\n",
-                       __func__, event.jdevice.which);
+                msg_debug("EVENT: joy device ADDED: index = %d\n", event.jdevice.which);
                 break;
 
             case SDL_JOYDEVICEREMOVED:
                 hwdata = joydev->hwdata;
                 if (hwdata->id == event.jdevice.which) {
-                    printf("%s(): EVENT: joy device REMOVED\n", __func__);
+                    msg_debug("EVENT: joy device %s REMOVED\n", joydev->name);
                     /* the current device was removed */
                     return false;
                 }
@@ -469,13 +468,13 @@ bool joy_arch_init(void)
         .hwdata_free = hwdata_free
     };
 
-    printf("Initializing SDL2 ... ");
+    msg_debug("Initializing SDL2 ...\n");
     if (SDL_Init(SDL_INIT_JOYSTICK) != 0) {
-        printf("failed: %s\n", SDL_GetError());
+        msg_error("Failed to initialize SDL2: %s\n", SDL_GetError());
         return false;
     }
     sdl_initialized = true;
-    printf("OK\n");
+    msg_debug("OK\n");
 
     joy_driver_register(&driver);
     return true;
