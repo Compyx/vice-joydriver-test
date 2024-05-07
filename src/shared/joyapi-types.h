@@ -49,11 +49,12 @@ typedef enum joy_action_e {
     JOY_ACTION_UI_ACTIVATE      /**< activate menu (SDL) or settings dialog (Gtk3) */
 } joy_action_t;
 
+/** \brief  Host joystick input types */
 typedef enum joy_input_e {
-    JOY_INPUT_INVALID = -1,
-    JOY_INPUT_AXIS,
-    JOY_INPUT_BUTTON,
-    JOY_INPUT_HAT
+    JOY_INPUT_INVALID = -1,     /**< invalid */
+    JOY_INPUT_AXIS,             /**< axis */
+    JOY_INPUT_BUTTON,           /**< button */
+    JOY_INPUT_HAT               /**< hat */
 } joy_input_t ;
 
 /** \brief  Mapping of host input to emulated keyboard */
@@ -94,6 +95,8 @@ typedef struct joy_mapping_s {
     joy_calibration_t  calibration;
 } joy_mapping_t;
 
+/** \brief  Hat directions
+ */
 typedef enum {
     JOY_HAT_INVALID = -1,
     JOY_HAT_NEUTRAL = 0,
@@ -107,21 +110,33 @@ typedef enum {
     JOY_HAT_NORTHWEST
 } joy_hat_direction_t;
 
+/** \brief  Number of hat directions */
+#define JOY_HAT_NUM_DIRECTIONS  (JOY_HAT_NORTHWEST + 1)
+
+/** \brief  Digital axis positions */
 typedef enum joystick_axis_value_e {
-    JOY_AXIS_NEGATIVE = -1,
-    JOY_AXIS_MIDDLE   =  0,
-    JOY_AXIS_POSITIVE =  1
+    JOY_AXIS_NEGATIVE = -1,     /**< negative direction (usually up/left) */
+    JOY_AXIS_MIDDLE   =  0,     /**< centered */
+    JOY_AXIS_POSITIVE =  1      /**< positive direction (usually down/right) */
 } joystick_axis_value_t;
 
-
-#define JOYSTICK_DIRECTION_NONE     0
-#define JOYSTICK_DIRECTION_UP       1
-#define JOYSTICK_DIRECTION_DOWN     2
-#define JOYSTICK_DIRECTION_LEFT     4
-#define JOYSTICK_DIRECTION_RIGHT    8
-
-
-#define JOY_HAT_NUM_DIRECTIONS  (JOY_HAT_NORTHWEST + 1)
+/* Emulated device directions and buttons */
+#define JOYSTICK_DIRECTION_NONE        0    /**< emulated device direction none */
+#define JOYSTICK_DIRECTION_UP          1    /**< emulated device direction up */
+#define JOYSTICK_DIRECTION_DOWN        2    /**< emulated device direction down */
+#define JOYSTICK_DIRECTION_LEFT        4    /**< emulated device direction left */
+#define JOYSTICK_DIRECTION_RIGHT       8    /**< emulated device direction right */
+#define JOYSTICK_BUTTON_FIRE1         16    /**< emulated device first fire button */
+#define JOYSTICK_BUTTON_SNES_A        16    /**< SNES pad A button */
+#define JOYSTICK_BUTTON_FIRE2         32    /**< emulated device second fire button */
+#define JOYSTICK_BUTTON_SNES_B        32    /**< SNES pad B buton */
+#define JOYSTICK_BUTTON_FIRE3         64    /**< emulated device third fire button */
+#define JOYSTICK_BUTTON_SNES_X        64    /**< SNES pad X button */
+#define JOYSTICK_BUTTON_SNES_Y       128    /**< SNES pad Y button */
+#define JOYSTICK_BUTTON_SNES_L       256    /**< SNES pad left shoulder button */
+#define JOYSTICK_BUTTON_SNES_R       512    /**< SNES pad right shoulder button */
+#define JOYSTICK_BUTTON_SNES_SELECT 1024    /**< SNES pad Select button */
+#define JOYSTICK_BUTTON_SNES_START  2048    /**< SNES pad Start button */
 
 /** \brief  Joystick button object */
 typedef struct joy_button_s {
@@ -144,10 +159,10 @@ typedef struct joy_axis_s {
     uint32_t       granularity; /**< granularity of reported values (Windows) */
     bool           digital;     /**< axis is digital */
     struct {
-        joy_mapping_t negative; /**< axis negative direction pin mapping */
-        joy_mapping_t positive; /**< axis positive direction pin mapping */
-        joy_mapping_t pot;      /**< axis to POT mapping */
-    } mapping;
+        joy_mapping_t negative;     /**< axis negative direction pin mapping */
+        joy_mapping_t positive;     /**< axis positive direction pin mapping */
+        joy_mapping_t pot;          /**< axis to POT mapping */
+    } mapping;                  /**< mappings */
 } joy_axis_t;
 
 /** \brief  Joystick hat object
@@ -199,16 +214,18 @@ typedef struct joy_driver_s {
     void (*hwdata_free)(void         *hwdata);  /**< free hardware-specific data */
 } joy_driver_t;
 
+/** \brief  Joymap file object
+ */
 typedef struct joymap_s {
-    joy_device_t  *joydev;
-    char          *path;
-    FILE          *fp;
-    int            ver_major;
-    int            ver_minor;
-    char          *dev_name;
-    uint16_t       dev_vendor;
-    uint16_t       dev_product;
-    uint16_t       dev_version;
+    joy_device_t  *joydev;          /**< associated joystick device */
+    char          *path;            /**< full path to joymap file */
+    FILE          *fp;              /**< file pointer (TODO: do we need this? */
+    int            ver_major;       /**< VJM major version number */
+    int            ver_minor;       /**< VJM minor version number */
+    char          *dev_name;        /**< joystick device name */
+    uint16_t       dev_vendor;      /**< joystick device vendor ID */
+    uint16_t       dev_product;     /**< joystick device product ID */
+    uint16_t       dev_version;     /**< joystick device product version */
 } joymap_t;
 
 #endif

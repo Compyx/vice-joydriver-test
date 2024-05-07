@@ -20,12 +20,16 @@
 
 #include "joyapi.h"
 
-
+/** \brief  Helper for printf() arguments */
 #define null_str(s) ((s) != NULL ? (s) : "(null)")
 
+/* debug flag defined in main.c (--debug) */
 extern bool debug;
+/* verbose flag defined in main.c (--verbose) */
 extern bool verbose;
 
+/** \brief  Joystick direction names
+ */
 static const char *joy_direction_names[16] = {
     "None",         /* 0x00: - */
     "North",        /* 0x01: Up */
@@ -45,6 +49,12 @@ static const char *joy_direction_names[16] = {
     "(invalid)",    /* 0x0f: Up + Down + Left + Right */
 };
 
+/** \brief  Joystick direction name getter
+ *
+ * \param[in]   mask    bitmask with joystick directions
+ * \return  direction(s) as string
+ */
+#define joy_direction_name(mask) (joy_direction_names[mask & 0x0f])
 
 /** \brief  Arch-specific callbacks for the joystick system
  *
@@ -162,7 +172,6 @@ void joy_device_free(joy_device_t *joydev)
 
     lib_free(joydev);
 }
-
 
 
 /** \brief  Print information on joystick device on stdout
@@ -284,7 +293,6 @@ const char *joy_device_get_hat_name(const joy_device_t *joydev, uint16_t hat)
 }
 
 
-#define joy_direction_name(mask) (joy_direction_names[mask & 0x0f])
 
 
 void joy_calibration_init(joy_calibration_t *calibration)
@@ -362,6 +370,13 @@ void joy_hat_init(joy_hat_t *hat)
 }
 
 
+/** \brief  Get axis by axis code
+ *
+ * \param[in]   joydev  joystick device
+ * \param[in]   code    axis code
+ *
+ * \return  axis or \c NULL when not found
+ */
 joy_axis_t *joy_axis_from_code(joy_device_t *joydev, uint16_t code)
 {
     for (uint32_t a = 0; a < joydev->num_axes; a++) {
@@ -372,6 +387,14 @@ joy_axis_t *joy_axis_from_code(joy_device_t *joydev, uint16_t code)
     return NULL;
 }
 
+
+/** \brief  Get axis by axis name
+ *
+ * \param[in]   joydev  joystick device
+ * \param[in]   name    axis name
+ *
+ * \return  axis or \c NULL when not found
+ */
 joy_axis_t *joy_axis_from_name(joy_device_t *joydev, const char *name)
 {
     for (uint32_t a = 0; a < joydev->num_axes; a++) {
@@ -381,6 +404,7 @@ joy_axis_t *joy_axis_from_name(joy_device_t *joydev, const char *name)
     }
     return NULL;
 }
+
 
 /** \brief  Translate raw axis value to joystick axis value enum
  *
@@ -413,6 +437,13 @@ joystick_axis_value_t joy_axis_value_from_hwdata(joy_axis_t *axis, int32_t hw_va
 }
 
 
+/** \brief  Get button by button code
+ *
+ * \param[in]   joydev  joystick device
+ * \param[in]   code    button code
+ *
+ * \return  button or \c NULL when not found
+ */
 joy_button_t *joy_button_from_code(joy_device_t *joydev, uint16_t code)
 {
     for (uint32_t b = 0; b < joydev->num_buttons; b++) {
@@ -424,6 +455,13 @@ joy_button_t *joy_button_from_code(joy_device_t *joydev, uint16_t code)
 }
 
 
+/** \brief  Get button by button name
+ *
+ * \param[in]   joydev  joystick device
+ * \param[in]   name    button name
+ *
+ * \return  button or \c NULL when not found
+ */
 joy_button_t *joy_button_from_name(joy_device_t *joydev, const char *name)
 {
     for (uint32_t b = 0; b < joydev->num_buttons; b++) {
@@ -435,6 +473,13 @@ joy_button_t *joy_button_from_name(joy_device_t *joydev, const char *name)
 }
 
 
+/** \brief  Get hat by hat code
+ *
+ * \param[in]   joydev  joystick device
+ * \param[in]   code    hat code
+ *
+ * \return  hat or \c NULL when not found
+ */
 joy_hat_t *joy_hat_from_code(joy_device_t *joydev, uint16_t code)
 {
     for (uint32_t h = 0; h < joydev->num_hats; h++) {
@@ -446,6 +491,13 @@ joy_hat_t *joy_hat_from_code(joy_device_t *joydev, uint16_t code)
 }
 
 
+/** \brief  Get hat by hat name
+ *
+ * \param[in]   joydev  joystick device
+ * \param[in]   name    hat name
+ *
+ * \return  hat or \c NULL when not found
+ */
 joy_hat_t *joy_hat_from_name(joy_device_t *joydev, const char *name)
 {
     for (uint32_t h = 0; h < joydev->num_hats; h++) {
@@ -712,6 +764,17 @@ uint32_t joy_device_set_capabilities(joy_device_t *joydev)
 }
 
 
+/** \brief  Scan connected host devices and generate list of usable devices
+ *
+ * Generate list of host devices that can function as input devices for VICE.
+ * The list contains information on each device, such as name, path/node in
+ * the host OS, vendor ID and product ID, number of axes, buttons and hats, and
+ * information on each axis, button and hat. The list is \c NULL terminated.
+ *
+ * \param[out]  devices list of valid devices
+ *
+ * \return  number of devices in \a devices or -1 on error
+ */
 int joy_device_list_init(joy_device_t ***devices)
 {
     int count;
@@ -732,12 +795,19 @@ int joy_device_list_init(joy_device_t ***devices)
         lib_strrtrim(joydev->name);
 
         /* create default mapping */
+        /* TODO: perhaps reject if no proper mapping can be created? */
         joy_arch_device_create_default_mapping(joydev);
     }
     return count;
 }
 
 
+/** \brief  Initialize joystick system
+ *
+ * Calls \c joy_arch_init() to initialize the arch-specific driver.
+ *
+ * \return  \c true on success
+ */
 bool joy_init(void)
 {
     /* just this for now */
@@ -745,6 +815,11 @@ bool joy_init(void)
 }
 
 
+/** \brief  Shut down joystick system
+ *
+ * Calls \c joy_arch_shutdown() to clean up resources of the arch-specific
+ * driver.
+ */
 void joy_shutdown(void)
 {
     joy_arch_shutdown();
