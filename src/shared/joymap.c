@@ -30,31 +30,31 @@
  * \note    Keep in the same order as the \c keywords array!
  */
 typedef enum {
-    VJM_KW_INVALID = -1,
+    VJM_KW_INVALID = -1,        /**< error code */
 
-    VJM_KW_ACTION = 0,
-    VJM_KW_AXIS,
-    VJM_KW_BUTTON,
-    VJM_KW_DEVICE_NAME,
-    VJM_KW_DEVICE_PRODUCT,
-    VJM_KW_DEVICE_VENDOR,
-    VJM_KW_DEVICE_VERSION,
-    VJM_KW_DOWN,
-    VJM_KW_FIRE1,
-    VJM_KW_FIRE2,
-    VJM_KW_FIRE3,
-    VJM_KW_HAT,
-    VJM_KW_KEY,
-    VJM_KW_LEFT,
-    VJM_KW_MAP,
-    VJM_KW_NEGATIVE,
-    VJM_KW_NONE,
-    VJM_KW_PIN,
-    VJM_KW_POSITIVE,
-    VJM_KW_POT,
-    VJM_KW_RIGHT,
-    VJM_KW_UP,
-    VJM_KW_VJM_VERSION,
+    VJM_KW_ACTION = 0,          /**< action */
+    VJM_KW_AXIS,                /**< axis */
+    VJM_KW_BUTTON,              /**< button */
+    VJM_KW_DEVICE_NAME,         /**< device-name */
+    VJM_KW_DEVICE_PRODUCT,      /**< device-product */
+    VJM_KW_DEVICE_VENDOR,       /**< device-vendor */
+    VJM_KW_DEVICE_VERSION,      /**< device-version */
+    VJM_KW_DOWN,                /**< down */
+    VJM_KW_FIRE1,               /**< fire1 */
+    VJM_KW_FIRE2,               /**< fire2 */
+    VJM_KW_FIRE3,               /**< fire3 */
+    VJM_KW_HAT,                 /**< hat */
+    VJM_KW_KEY,                 /**< key */
+    VJM_KW_LEFT,                /**< left */
+    VJM_KW_MAP,                 /**< map */
+    VJM_KW_NEGATIVE,            /**< negative */
+    VJM_KW_NONE,                /**< none */
+    VJM_KW_PIN,                 /**< pin */
+    VJM_KW_POSITIVE,            /**< positive */
+    VJM_KW_POT,                 /**< pot */
+    VJM_KW_RIGHT,               /**< right */
+    VJM_KW_UP,                  /**< up */
+    VJM_KW_VJM_VERSION,         /**< vjm-version */
 } keyword_id_t;
 
 /** \brief  Parser state object */
@@ -77,6 +77,8 @@ static void parser_log_error  (const char *fmt, ...);
 /** \brief  VJM keywords
  *
  * List of keywords recognized by the parser.
+ *
+ * \note    Keep these alphabetically sorted!
  */
 static const char *keywords[] = {
     "action",
@@ -403,22 +405,20 @@ void joymap_free(joymap_t *joymap)
 static joymap_t *joymap_open(const char *path)
 {
     joymap_t *joymap;
-    FILE     *fp;
 
     pstate.linenum   = 1;
     pstate.buffer[0] = '\0';
     pstate.curpos    = pstate.buffer;
     pstate.prevpos   = pstate.buffer;
+    pstate.fp        = fopen(path, "r");
 
-    fp = fopen(path, "r");
-    if (fp == NULL) {
+    if (pstate.fp == NULL) {
         msg_error("failed to open vjm file for reading: %s\n", strerror(errno));
         return NULL;
     }
 
     joymap = joymap_new();
     joymap->path = lib_strdup(path);
-    pstate.fp = fp;
     return joymap;
 }
 
