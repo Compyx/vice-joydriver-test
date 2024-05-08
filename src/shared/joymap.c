@@ -59,14 +59,14 @@ typedef enum {
 
 /** \brief  Parser state object */
 typedef struct pstate_s {
-    const char *current_path;   /**< current path to vjm file */
-    char       *buffer;         /**< buffer for reading lines from file */
-    size_t      bufsize;        /**< number of bytes allocated for \c buffer */
-    size_t      buflen;         /**< string length of \c buffer */
-    int         linenum;        /**< line number in vjm file */
-    char       *curpos;         /**< current position in buffer */
-    char       *prevpos;        /**< previous position in buffer for error
-                                     reporting */
+    FILE       *fp;         /**< file pointer during parsing */
+    const char *path;       /**< current path to vjm file */
+    char       *buffer;     /**< buffer for reading lines from file */
+    size_t      bufsize;    /**< number of bytes allocated for \c buffer */
+    size_t      buflen;     /**< string length of \c buffer */
+    int         linenum;    /**< line number in vjm file */
+    char       *curpos;     /**< current position in buffer */
+    char       *prevpos;    /**< previous position in buffer for error logging */
 } pstate_t;
 
 
@@ -122,7 +122,8 @@ static pstate_t pstate;
  */
 static void pstate_init(void)
 {
-    pstate.current_path = NULL;
+    pstate.fp        = NULL;
+    pstate.path      = NULL;
     pstate.bufsize   = LINEBUF_INITIAL_SIZE;
     pstate.buflen    = 0;
     pstate.buffer    = lib_malloc(pstate.bufsize);
@@ -135,6 +136,9 @@ static void pstate_init(void)
 /** \brief  Clean up resources used by the parser state */
 static void pstate_free(void)
 {
+    if (pstate.fp != NULL) {
+        fclose(pstate.fp);
+    }
     lib_free(pstate.buffer);
 }
 
@@ -316,7 +320,7 @@ static void parser_log_helper(const char *prefix, const char *fmt, va_list args)
     }
     fprintf(stderr,
             "%s:%d:%d: %s\n",
-            lib_basename(pstate.current_path),
+            lib_basename(pstate.path),
             pstate.linenum,
             (int)(pstate.curpos - pstate.buffer) + 1,
             msg);
@@ -361,7 +365,6 @@ static joymap_t *joymap_new(void)
 
     joymap->joydev        = NULL;
     joymap->path          = NULL;
-    joymap->fp            = NULL;
     joymap->ver_major     = 0;
     joymap->ver_minor     = 0;
     joymap->dev_name      = NULL;
@@ -380,12 +383,13 @@ static joymap_t *joymap_new(void)
 void joymap_free(joymap_t *joymap)
 {
     if (joymap != NULL) {
-        if (joymap->fp != NULL) {
-            fclose(joymap->fp);
-        }
         lib_free(joymap->path);
         lib_free(joymap->dev_name);
         lib_free(joymap);
+    }
+    if (pstate.fp != NULL) {
+        fclose(pstate.fp);
+        pstate.fp = NULL;
     }
 }
 
@@ -413,18 +417,16 @@ static joymap_t *joymap_open(const char *path)
     }
 
     joymap = joymap_new();
-    joymap->fp   = fp;
     joymap->path = lib_strdup(path);
+    pstate.fp = fp;
     return joymap;
 }
 
 /** \brief  Read a line from the joymap
  *
- * \param[in]   joymap  joymap
- *
  * \return  \c true on success, \c false on EOF (can indicate failure)
  */
-static bool joymap_read_line(joymap_t *joymap)
+static bool joymap_read_line(void)
 {
     pstate.buflen    = 0;
     pstate.buffer[0] = '\0';
@@ -439,7 +441,7 @@ static bool joymap_read_line(joymap_t *joymap)
             pstate.buffer = lib_realloc(pstate.buffer, pstate.bufsize);
         }
 
-        ch = fgetc(joymap->fp);
+        ch = fgetc(pstate.fp);
         if (ch == EOF) {
             pstate.buffer[pstate.buflen] = '\0';
             pstate_rtrim();
@@ -1198,7 +1200,7 @@ joymap_t *joymap_load(joy_device_t *joydev, const char *path)
         return NULL;
     }
 
-    pstate.current_path = path;
+    pstate.path = path;
 
     msg_debug("loading joymap file '%s'\n", path);
     joymap = joymap_open(path);
@@ -1209,7 +1211,7 @@ joymap_t *joymap_load(joy_device_t *joydev, const char *path)
 
     errno          = 0;
     pstate.linenum = 0;
-    while (joymap_read_line(joymap)) {
+    while (joymap_read_line()) {
         if (!joymap_parse_line(joymap)) {
             joymap_free(joymap);
             return NULL;
