@@ -689,7 +689,15 @@ exit_err:
     return ACTION_INVALID;
 }
 
-
+/** \brief  Get VJM version number
+ *
+ * Parse current line for VJM version (major.minor), called when encountering
+ * the "vjm-version "keyword.
+ *
+ * \param[in]   joymap  joymap
+ *
+ * \return  \c true on success
+ */
 static bool get_vjm_version(joymap_t *joymap)
 {
     int major = 0;
@@ -724,7 +732,6 @@ static bool get_vjm_version(joymap_t *joymap)
     joymap->ver_minor = minor;
     return true;
 }
-
 
 /** \brief  Get mapping for axis
  *
@@ -868,7 +875,15 @@ static joy_mapping_t *get_hat_mapping(joymap_t *joymap)
     return mapping;
 }
 
-
+/** \brief  Handle pin mapping
+ *
+ * Parse current line for joystick pin mapping.
+ * Called when encountering "map pin".
+ *
+ * \param[in]   joymap  joymap
+ *
+ * \return  \c true on success
+ */
 static bool handle_pin_mapping(joymap_t *joymap)
 {
     int            pin;
@@ -922,7 +937,15 @@ static bool handle_pin_mapping(joymap_t *joymap)
     }
 }
 
-
+/** \brief  Handle key mapping
+ *
+ * Parse current line for key press mapping.
+ * Called when encountering "map key".
+ *
+ * \param[in]   joymap  joymap
+ *
+ * \return  \c true on success
+ */
 static bool handle_key_mapping(joymap_t *joymap)
 {
     int           column;
@@ -1000,6 +1023,14 @@ static bool handle_key_mapping(joymap_t *joymap)
     }
 }
 
+/** \brief  Handle UI action mapping
+ *
+ * Parse line for UI action mapping. Calling when encountering "map action".
+ *
+ * \param[in]   joymap  joymap
+ *
+ * \return  \c true on success
+ */
 static bool handle_action_mapping(joymap_t *joymap)
 {
     keyword_id_t   input_type;
@@ -1049,6 +1080,15 @@ static bool handle_action_mapping(joymap_t *joymap)
     }
 }
 
+/** \brief  Handle mapping of host input to emulated input
+ *
+ * Parse line for different mapping types. Called when encountering the "map"
+ * keyword.
+ *
+ * \param[in]   joymap  joymap
+ *
+ * \return  \c true on success
+ */ 
 static bool handle_mapping(joymap_t *joymap)
 {
     bool result = true;
@@ -1082,6 +1122,16 @@ static bool handle_mapping(joymap_t *joymap)
     return result;
 }
 
+/** \brief  Handle initial keyword on current line
+ *
+ * Call keyword-specific handlers based on the initial keyword on the current
+ * line.
+ *
+ * \param[in]   joymap  joymap
+ * \param[in]   kw      keyword ID
+ *
+ * \return  \c on success
+ */
 static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
 {
     int   vendor;
@@ -1158,7 +1208,15 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
     return result;
 }
 
-
+/** \brief  Parse current line
+ *
+ * Parse current line for header lines (vjm-version, vendor, product, name) or
+ * mappings.
+ *
+ * \param[in]   joymap  joymap
+ *
+ * \return  \c true on success
+ */
 static bool joymap_parse_line(joymap_t *joymap)
 {
     keyword_id_t  kw;
@@ -1243,12 +1301,17 @@ void joymap_dump(joymap_t *joymap)
 }
 
 
+/** \brief  Initialize VJM parser module */
 void joymap_module_init(void)
 {
     pstate_init();
 }
 
 
+/** \brief  Shut down VJM parser module
+ *
+ * Clean up resources used by the parser.
+ */
 void joymap_module_shutdown(void)
 {
     pstate_free();
