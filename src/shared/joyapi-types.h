@@ -219,7 +219,7 @@ typedef struct joy_driver_s {
 typedef struct joymap_s {
     joy_device_t  *joydev;          /**< associated joystick device */
     char          *path;            /**< full path to joymap file */
-    FILE          *fp;              /**< file pointer (TODO: do we need this? */
+    FILE          *fp;              /**< file pointer used during parsing */
     int            ver_major;       /**< VJM major version number */
     int            ver_minor;       /**< VJM minor version number */
     char          *dev_name;        /**< joystick device name */

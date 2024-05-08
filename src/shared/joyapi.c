@@ -20,6 +20,7 @@
 
 #include "joyapi.h"
 
+
 /** \brief  Helper for printf() arguments */
 #define null_str(s) ((s) != NULL ? (s) : "(null)")
 

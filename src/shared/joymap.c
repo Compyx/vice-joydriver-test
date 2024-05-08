@@ -25,7 +25,10 @@
 
 #define LINEBUF_INITIAL_SIZE    256
 
-
+/** \brief  VJM keyword IDs
+ *
+ * \note    Keep in the same order as the \c keywords array!
+ */
 typedef enum {
     VJM_KW_INVALID = -1,
 
@@ -71,6 +74,10 @@ typedef struct pstate_s {
 static void parser_log_warning(const char *fmt, ...);
 static void parser_log_error  (const char *fmt, ...);
 
+/** \brief  VJM keywords
+ *
+ * List of keywords recognized by the parser.
+ */
 static const char *keywords[] = {
     "action",
     "axis",
@@ -206,6 +213,10 @@ static const char *kw_name(keyword_id_t kw)
 
 /** \brief  Determine if keyword is an input type
  *
+ * Check keyword for "axis", "button" or "hat".
+ *
+ * \param[in]   kw  keyword ID
+ *
  * \return  \c true if input type
  */
 static bool kw_is_input_type(keyword_id_t kw)
@@ -213,54 +224,88 @@ static bool kw_is_input_type(keyword_id_t kw)
     return (bool)(kw == VJM_KW_AXIS || kw == VJM_KW_BUTTON || kw == VJM_KW_HAT);
 }
 
+/** \brief  Determine if keyword is a joystick direction
+ *
+ * Check keyword for "up", "down", "left" or "right".
+ *
+ * \param[in]   kw  keyword ID
+ *
+ * \return  \c true if valid joystick direction
+ */
 static bool kw_is_joystick_direction(keyword_id_t kw)
 {
     return (bool)(kw == VJM_KW_UP   || kw == VJM_KW_DOWN ||
                   kw == VJM_KW_LEFT || kw == VJM_KW_RIGHT);
 }
 
+/** \brief  Determine if keyword is an axis direction
+ *
+ * Check keyword for "negative" or "positive".
+ *
+ * \param[in]   kw  keyword ID
+ *
+ * \return  \c true if valid axis direction
+ */
 static bool kw_is_axis_direction(keyword_id_t kw)
 {
     return (bool)(kw == VJM_KW_NEGATIVE || kw == VJM_KW_POSITIVE);
 }
 
-#if 0
-static bool kw_is_direction(keyword_id_t kw)
-{
-    return kw_is_axis_direction(kw) || kw_is_joystick_direction(kw);
-}
-#endif
-
 /** \brief  Determine if pin number is valid
  *
- * Determine if \a pin is a directional pin or a fire[123] button pin.
+ * Determine if \a pin is a directional pin, a fire[123] button, or a SNES pad
+ * button (A, B, X, Y, L, R, Select, Start).
  *
- * \param[in]   pin pin bit mask
+ * \param[in]   pin pin bit
  *
  * \return  \c true if \a pin is valid
  */
 static bool pin_is_valid(int pin)
 {
-    return (bool)(pin == 1  || pin == 2  || pin == 4 || pin == 8 ||
-                  pin == 16 || pin == 32 || pin == 64);
+    return (bool)(pin == 1   || pin == 2   || pin == 4    || pin == 8 ||
+                  pin == 16  || pin == 32  || pin == 64   || pin == 128 ||
+                  pin == 256 || pin == 512 || pin == 1024 || pin == 2048);
 }
 
+/** \brief  Determine if keyboard matrix row is valid
+ *
+ * \param[in]   row keyboard matrix row
+ *
+ * \return  \c true if valid
+ */
 static bool matrix_row_is_valid(int row)
 {
     return (bool)(row >= KBD_ROW_JOY_KEYPAD && row <= 9);
 }
 
+/** \brief  Determine if keyboard matrix column is valid
+ *
+ * \param[in]   column  keyboard matrix column
+ *
+ * \return  \c true if valid
+ */
 static bool matrix_column_is_valid(int column)
 {
     return (bool)(column >= 0 && column < KBD_COLS);
 }
 
+/** \brief  Determine if key press flags value is valid
+ *
+ * \param[in]   flags   key press flags
+ *
+ * \return  \c true if valid
+ */
 static bool matrix_flags_is_valid(int flags)
 {
     return (bool)(flags >= 0 && flags < ((KBD_MOD_SHIFTLOCK * 2) - 1));
 }
 
-
+/** \brief  Helper for logging parser messages
+ *
+ * \param[in]   prefix  prefix for messages (can be \c NULL)
+ * \param[in]   fmt     format strng
+ * \param[in]   args    arguments
+ */
 static void parser_log_helper(const char *prefix, const char *fmt, va_list args)
 {
     char msg[1024];
@@ -277,6 +322,11 @@ static void parser_log_helper(const char *prefix, const char *fmt, va_list args)
             msg);
 }
 
+/** \brief  Log parser error message on stderr
+ *
+ * \param[in]   fmt format string
+ * \param[in]   ... arguments for \a fmt
+ */
 static void parser_log_error(const char *fmt, ...)
 {
     va_list args;
@@ -286,6 +336,11 @@ static void parser_log_error(const char *fmt, ...)
     va_end(args);
 }
 
+/** \brief  Log parser warning message on stderr
+ *
+ * \param[in]   fmt format string
+ * \param[in]   ... arguments for \a fmt
+ */
 static void parser_log_warning(const char *fmt, ...)
 {
     va_list args;
@@ -296,6 +351,10 @@ static void parser_log_warning(const char *fmt, ...)
 }
 
 
+/** \brief  Allocate and intialize new joymap object
+ *
+ * \return  new joymap with all fields initialized to \c 0 / \c NULL
+ */
 static joymap_t *joymap_new(void)
 {
     joymap_t *joymap = lib_malloc(sizeof *joymap);
@@ -314,6 +373,10 @@ static joymap_t *joymap_new(void)
 }
 
 
+/** \brief  Free joymap and its members
+ *
+ * \param[in]   joymap  joymap
+ */
 void joymap_free(joymap_t *joymap)
 {
     if (joymap != NULL) {
@@ -327,6 +390,12 @@ void joymap_free(joymap_t *joymap)
 }
 
 
+/** \brief  Open file and create new joymap object for it
+ *
+ * \param[in]   path    path to VJM file
+ *
+ * \return  new joymap or \c NULL on failure
+ */
 static joymap_t *joymap_open(const char *path)
 {
     joymap_t *joymap;
@@ -349,7 +418,12 @@ static joymap_t *joymap_open(const char *path)
     return joymap;
 }
 
-
+/** \brief  Read a line from the joymap
+ *
+ * \param[in]   joymap  joymap
+ *
+ * \return  \c true on success, \c false on EOF (can indicate failure)
+ */
 static bool joymap_read_line(joymap_t *joymap)
 {
     pstate.buflen    = 0;
@@ -382,6 +456,10 @@ static bool joymap_read_line(joymap_t *joymap)
     return true;
 }
 
+/** \brief  Parse current position in line for keyword
+ *
+ * \return  keyword ID or \c VJM_KW_INVALID (-1) when no keyword was found
+ */ 
 static keyword_id_t get_keyword(void)
 {
     keyword_id_t  id  = VJM_KW_INVALID;
