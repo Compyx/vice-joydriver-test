@@ -294,15 +294,12 @@ const char *joy_device_get_hat_name(const joy_device_t *joydev, uint16_t hat)
 }
 
 
-
-
 void joy_calibration_init(joy_calibration_t *calibration)
 {
-    calibration->threshold_neg = 0;
-    calibration->threshold_pos = 0;
-    calibration->deadzone_neg  = 0;
-    calibration->deadzone_pos  = 0;
-    calibration->invert        = false;
+    calibration->deadzone   = 0;
+    calibration->fuzz       = 0;
+    calibration->threshold  = 0;
+    calibration->configured = false;
 }
 
 /** \brief  Initialize joystick mapping object to default values
@@ -311,7 +308,8 @@ void joy_calibration_init(joy_calibration_t *calibration)
  */
 void joy_mapping_init(joy_mapping_t *mapping)
 {
-    mapping->action = JOY_ACTION_NONE;
+    mapping->action   = JOY_ACTION_NONE;
+    mapping->inverted = false;
     memset(&(mapping->target), 0, sizeof mapping->target);
     joy_calibration_init(&(mapping->calibration));
 }
@@ -362,7 +360,7 @@ void joy_hat_init(joy_hat_t *hat)
     hat->code = 0;
     hat->prev = 0;
     for (size_t i = 0; i < ARRAY_LEN(hat->hat_map); i++) {
-        hat->hat_map[i] = JOY_HAT_NEUTRAL;
+        hat->hat_map[i] = JOY_HAT_CENTERED;
     }
     joy_mapping_init(&(hat->mapping.up));
     joy_mapping_init(&(hat->mapping.down));
@@ -416,7 +414,7 @@ joy_axis_t *joy_axis_from_name(joy_device_t *joydev, const char *name)
  */
 joystick_axis_value_t joy_axis_value_from_hwdata(joy_axis_t *axis, int32_t hw_value)
 {
-    joystick_axis_value_t axis_value = JOY_AXIS_MIDDLE;
+    joystick_axis_value_t axis_value = JOY_AXIS_CENTERED;
 
     if (axis->digital) {
         if (hw_value < 0) {

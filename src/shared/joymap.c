@@ -35,6 +35,8 @@ typedef enum {
     VJM_KW_ACTION = 0,          /**< action */
     VJM_KW_AXIS,                /**< axis */
     VJM_KW_BUTTON,              /**< button */
+    VJM_KW_CALIBRATE,           /**< calibrate */
+    VJM_KW_DEADZONE,            /**< deadzone */
     VJM_KW_DEVICE_NAME,         /**< device-name */
     VJM_KW_DEVICE_PRODUCT,      /**< device-product */
     VJM_KW_DEVICE_VENDOR,       /**< device-vendor */
@@ -43,7 +45,9 @@ typedef enum {
     VJM_KW_FIRE1,               /**< fire1 */
     VJM_KW_FIRE2,               /**< fire2 */
     VJM_KW_FIRE3,               /**< fire3 */
+    VJM_KW_FUZZ,                /**< fuzz */
     VJM_KW_HAT,                 /**< hat */
+    VJM_KW_INVERTED,            /**< inverted */
     VJM_KW_KEY,                 /**< key */
     VJM_KW_LEFT,                /**< left */
     VJM_KW_MAP,                 /**< map */
@@ -53,6 +57,7 @@ typedef enum {
     VJM_KW_POSITIVE,            /**< positive */
     VJM_KW_POT,                 /**< pot */
     VJM_KW_RIGHT,               /**< right */
+    VJM_KW_THRESHOLD,           /**< threshold */
     VJM_KW_UP,                  /**< up */
     VJM_KW_VJM_VERSION,         /**< vjm-version */
 } keyword_id_t;
@@ -84,6 +89,8 @@ static const char *keywords[] = {
     "action",
     "axis",
     "button",
+    "calibrate",
+    "deadzone",
     "device-name",
     "device-product",
     "device-vendor",
@@ -92,7 +99,9 @@ static const char *keywords[] = {
     "fire1",
     "fire2",
     "fire3",
+    "fuzz",
     "hat",
+    "inverted",
     "key",
     "left",
     "map",
@@ -102,6 +111,7 @@ static const char *keywords[] = {
     "positive",
     "pot",
     "right",
+    "threshold",
     "up",
     "vjm-version"
 };

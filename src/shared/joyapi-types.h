@@ -70,44 +70,41 @@ typedef enum joy_pot_axis_s {
     JOY_POTY        /**< POTY register */
 } joy_pot_axis_t;
 
-/** \brief  Calibration data for a "normal" axis
- *
- * Calibration data for an axis that has a neutral position in the middle of
- * its range. For triggers we might need a different data structure.
+/** \brief  Calibration data for a mapping
  */
 typedef struct joy_calibration_s {
-    int32_t threshold_neg;
-    int32_t threshold_pos;
-    int32_t deadzone_neg;
-    int32_t deadzone_pos;
-    bool    invert;
+    int32_t deadzone;   /**< deadzone (for non-digital inputs) */
+    int32_t fuzz;       /**< fuzz for input values */
+    int32_t threshold;  /**< cutoff for range to digital conversion */
+    bool    configured; /**< calibration is set and must be applied */
 } joy_calibration_t;
 
 /** \brief  Mapping of host input to emulator input or action */
 typedef struct joy_mapping_s {
-    joy_action_t       action;
+    joy_action_t       action;      /**< type of mapping */
     union {
-        int            pin;         /* JOY_ACTION_JOYSTICK */
-        joy_pot_axis_t pot;         /* JOY_ACTION_POT_AXIS */
-        joy_key_map_t  key;         /* JOY_ACTION_KEYBOARD */
-        int            ui_action;   /* JOY_ACTION_UI_ACTION */
+        int            pin;         /**< pin number for JOY_ACTION_JOYSTICK */
+        joy_pot_axis_t pot;         /**< pot for JOY_ACTION_POT_AXIS */
+        joy_key_map_t  key;         /**< key for JOY_ACTION_KEYBOARD */
+        int            ui_action;   /**< UI action for JOY_ACTION_UI_ACTION */
     } target;
-    joy_calibration_t  calibration;
+    bool               inverted;    /**< input should be inverted */ 
+    joy_calibration_t  calibration; /**< calibration data */
 } joy_mapping_t;
 
 /** \brief  Hat directions
  */
 typedef enum {
-    JOY_HAT_INVALID = -1,
-    JOY_HAT_NEUTRAL = 0,
-    JOY_HAT_NORTH,
-    JOY_HAT_NORTHEAST,
-    JOY_HAT_EAST,
-    JOY_HAT_SOUTHEAST,
-    JOY_HAT_SOUTH,
-    JOY_HAT_SOUTHWEST,
-    JOY_HAT_WEST,
-    JOY_HAT_NORTHWEST
+    JOY_HAT_INVALID = -1,   /**< invalid */
+    JOY_HAT_CENTERED = 0,   /**< centered */
+    JOY_HAT_NORTH,          /**< up */
+    JOY_HAT_NORTHEAST,      /**< up + right */
+    JOY_HAT_EAST,           /**< right */
+    JOY_HAT_SOUTHEAST,      /**< down + right */
+    JOY_HAT_SOUTH,          /**< down */
+    JOY_HAT_SOUTHWEST,      /**< down + left */
+    JOY_HAT_WEST,           /**< left */
+    JOY_HAT_NORTHWEST       /**< up + left */
 } joy_hat_direction_t;
 
 /** \brief  Number of hat directions */
@@ -116,7 +113,7 @@ typedef enum {
 /** \brief  Digital axis positions */
 typedef enum joystick_axis_value_e {
     JOY_AXIS_NEGATIVE = -1,     /**< negative direction (usually up/left) */
-    JOY_AXIS_MIDDLE   =  0,     /**< centered */
+    JOY_AXIS_CENTERED =  0,     /**< centered */
     JOY_AXIS_POSITIVE =  1      /**< positive direction (usually down/right) */
 } joystick_axis_value_t;
 
