@@ -24,7 +24,15 @@ keyword on a line.
 | `device-name`    | "\<device name\>"   | Device name string                               |
 | `device-vendor`  | \<vendor ID\>       | Unsigned 16-bit USB vendor ID                    |
 | `device-product` | \<product ID\>      | Unsigned 16-bit USB product ID                   |
-| `pin`            |                     | Map input to joystick pin (**TODO**)             |
+| `map`            | (variable)          | Declare mapping of host input to emulated input  |
+| `pin`            |                     | Map input to joystick pin                        |
 | `pot`            |                     | Map input to potentiometer (**TODO**)            |
-| `key`            |                     | Map input to key press (**TODO**)                |
-| `action`         |                     | Map input to UI action (**TODO**)                |
+| `key`            |                     | Map input to key press                           |
+| `action`         |                     | Map input to UI action                           |
+| `negative`       |                     | Negative axis direction (usually up or left)     |
+| `positive`       |                     | Positive axis direction (usually down or right)  |
+| `up`             |                     | Hat up direction                                 |
+| `down`           |                     | Hat down direction                               |
+| `left`           |                     | Hat left direction                               |
+| `right`          |                     | Hat right direction                              |
+| `inverted`       |                     | Host input value should be inverted              |

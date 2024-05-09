@@ -2,22 +2,30 @@
 
 Small test program to figure out how to query joysticks on various OSes for new
 joystick drivers for the non-SDL UIs in [VICE](https://github.com/VICE-Team/svn-mirror/).
+Also a playground for implementing joymap files per-device with a human-readable
+syntax and the possibility to specify calibration of inputs.
+
 Very much a work in progress.
 
 
-## Current status (2024-05-05)
+## Current status (2024-05-09)
 
 ### Shared code
 
 Custom mappings (via .vjm files) are partially implemented: axes, buttons and
 hats can be mapped to emulated devices' buttons and directions, emulated keys
 and UI actions.
-Still TODO are non-binary POT values (e.g. mapping axes to mouse or paddle
+Still **TODO** are non-binary POT values (e.g. mapping axes to mouse or paddle
 inputs).
+
+Calibration of inputs is still **TODO**, but being worked on.
 
 ### SDL2
 
-Scanning devices for capabilities work, polling works.
+Scanning devices for capabilities work, polling works. Button, axis and hat
+events are passed to the generic joystick code. The current implementation uses
+the simple `SDL_Joystick` interface, perhaps using the newer `SDL_GameController`
+interface gives us more useful info than the (somewhat limited) old interface.
 
 ### Linux
 
@@ -56,7 +64,7 @@ events are passed to the generic joystick code.
 
 ### Windows
 
-- msys2
+- msys2 (See https://www.msys2.org/wiki/MSYS2-installation/)
 - SDL2 (`pacman -S ${MINGW_PACKAGE_PREFIX}-SDL2`
 
 ### MacOS
