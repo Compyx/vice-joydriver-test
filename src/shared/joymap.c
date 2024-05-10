@@ -21,6 +21,8 @@
 #include "joymap.h"
 
 
+#define bstr(B) ((B) ? "true" : "false")
+
 #define VJM_COMMENT '#'
 
 #define LINEBUF_INITIAL_SIZE    256
@@ -192,7 +194,7 @@ static bool pstate_is_number(void)
 {
     char *s = pstate.curpos;
 
-    if (s[0] == '-' && isdigit((unsigned char)s[1])) {
+    if ((s[0] == '-' || s[0] == '+') && isdigit((unsigned char)s[1])) {
         return true;
     } else if (s[0] == '0') {
         if (s[1] == '\0' || isspace((unsigned char)s[1])) {
@@ -1120,7 +1122,6 @@ static bool handle_mapping(joymap_t *joymap)
 
         case VJM_KW_ACTION:
             result = handle_action_mapping(joymap);
-//            parser_log_warning("TODO: handle 'action'");
             break;
 
         default:
@@ -1131,6 +1132,92 @@ static bool handle_mapping(joymap_t *joymap)
 
     return result;
 }
+
+/** \brief  Parse line for axis calibration specification
+ *
+ * Parse current line for deadzone, fuzz and/or threshold specifications.
+ *
+ * \param[in]   joymap  joymap
+ *
+ * \return  \c true on success
+ */
+static bool handle_axis_calibration(joymap_t *joymap)
+{
+    joy_mapping_t *mapping;
+    int            value;
+
+    mapping = get_axis_mapping(joymap);
+    if (mapping == NULL) {
+        return false;
+    }
+
+    /* keep looking for "<keyword> <value>" pairs until end of line */
+    while (*pstate.curpos != '\0') {
+        switch (get_keyword()) {
+            case VJM_KW_THRESHOLD:
+                printf("%s(): got threshold keyword\n", __func__);
+                if (!get_int_arg(&value)) {
+                    parser_log_error("expected integer value for threshold");
+                    return false;
+                }
+                mapping->calibration.threshold = (int32_t)value;
+                break;
+            case VJM_KW_DEADZONE:
+                printf("%s(): got deadzone keyword\n", __func__);
+                if (!get_int_arg(&value)) {
+                    parser_log_error("expected integer value for deadzone");
+                    return false;
+                }
+                mapping->calibration.deadzone = (int32_t)value;
+                break;
+            case VJM_KW_FUZZ:
+                printf("%s(): got fuzz keyword\n", __func__);
+                if (!get_int_arg(&value)) {
+                    parser_log_error("expected integer value for fuzz");
+                    return false;
+                }
+                mapping->calibration.fuzz = (int32_t)value;
+                break;
+            default:
+                parser_log_error("expected either 'deadzone', 'fuzz' or 'threshold'");
+                return false;
+        }
+    }
+
+    printf("deadzone  = %d\n", mapping->calibration.deadzone);
+    printf("fuzz      = %d\n", mapping->calibration.fuzz);
+    printf("threshold = %d\n", mapping->calibration.threshold);
+
+    return true;
+}
+
+/** \brief  Parse calibration specification on the current line
+ *
+ * \param[in]   joymap  joymap
+ *
+ * \return  \c true on success
+ */
+static bool handle_calibration(joymap_t *joymap)
+{
+    bool result = true;
+
+    switch (get_keyword()) {
+        case VJM_KW_AXIS:
+            result = handle_axis_calibration(joymap);
+            break;
+        case VJM_KW_BUTTON:
+            printf("Button calibration: is this a thing?\n");
+            break;
+        case VJM_KW_HAT:
+            printf("Hat calibration\n");
+            break;
+        default:
+            parser_log_error("expected input type ('axis', 'button' or 'hat')");
+            result = false;
+    }
+    return result;
+}
+
 
 /** \brief  Handle initial keyword on current line
  *
@@ -1207,6 +1294,12 @@ static bool handle_keyword(joymap_t *joymap, keyword_id_t kw)
         case VJM_KW_MAP:
             if (!handle_mapping(joymap)) {
                 result = false;
+            }
+            break;
+
+        case VJM_KW_CALIBRATE:
+            if (!handle_calibration(joymap)) {
+                return false;
             }
             break;
 
