@@ -229,6 +229,7 @@ static const char *kw_name(keyword_id_t kw)
     return "<invalid>";
 }
 
+#if 0
 /** \brief  Determine if keyword is an input type
  *
  * Check keyword for "axis", "button" or "hat".
@@ -241,6 +242,7 @@ static bool kw_is_input_type(keyword_id_t kw)
 {
     return (bool)(kw == VJM_KW_AXIS || kw == VJM_KW_BUTTON || kw == VJM_KW_HAT);
 }
+#endif
 
 /** \brief  Determine if keyword is a joystick direction
  *
@@ -887,6 +889,36 @@ static joy_mapping_t *get_hat_mapping(joymap_t *joymap)
     return mapping;
 }
 
+/** \brief  Get mapping for either axis, button or hat
+ *
+ * Parse current line for "&lt;axis|button|hat&gt; \"&lt;name&gt;\"" and return
+ * the associated mapping in \a joymap.
+ *
+ * \param[in]   joymap  joymap
+ *
+ * \return  mapping or \c NULL on error
+ */
+static joy_mapping_t *get_input_mapping(joymap_t *joymap)
+{
+    joy_mapping_t *mapping = NULL;
+
+    switch (get_keyword()) {
+        case VJM_KW_AXIS:
+            mapping = get_axis_mapping(joymap);
+            break;
+        case VJM_KW_BUTTON:
+            mapping = get_button_mapping(joymap);
+            break;
+        case VJM_KW_HAT:
+            mapping = get_hat_mapping(joymap);
+            break;
+        default:
+            parser_log_error("expected input type ('axis', 'button' or 'hat')");
+            break;
+    }
+    return mapping;
+}
+
 /** \brief  Handle pin mapping
  *
  * Parse current line for joystick pin mapping.
@@ -899,7 +931,6 @@ static joy_mapping_t *get_hat_mapping(joymap_t *joymap)
 static bool handle_pin_mapping(joymap_t *joymap)
 {
     int            pin;
-    keyword_id_t   input_type;
     joy_mapping_t *mapping;
 
     /* pin number */
@@ -913,32 +944,7 @@ static bool handle_pin_mapping(joymap_t *joymap)
         return false;
     }
 
-    /* input type */
-    input_type = get_keyword();
-    if (!kw_is_input_type(input_type)) {
-        parser_log_error("expected input type ('axis', 'button' or 'hat')");
-        return false;
-    }
-
-    switch (input_type) {
-        case VJM_KW_AXIS:
-            mapping = get_axis_mapping(joymap);
-            break;
-
-        case VJM_KW_BUTTON:
-            mapping = get_button_mapping(joymap);
-            break;
-
-        case VJM_KW_HAT:
-            mapping = get_hat_mapping(joymap);
-            break;
-
-        default:
-            parser_log_error("unhandled input type %d!\n", (int)input_type);
-            mapping = NULL;
-            break;
-    }
-
+    mapping = get_input_mapping(joymap);
     if (mapping != NULL) {
         msg_debug("mapping to pin %d\n", pin);
         mapping->action = JOY_ACTION_JOYSTICK;
@@ -963,7 +969,6 @@ static bool handle_key_mapping(joymap_t *joymap)
     int           column;
     int           row;
     int           flags;
-    keyword_id_t  input_type;
     joy_mapping_t *mapping;
 
     /* row */
@@ -998,32 +1003,7 @@ static bool handle_key_mapping(joymap_t *joymap)
         return false;
     }
 
-    /* input type */
-    input_type = get_keyword();
-    if (!kw_is_input_type(input_type)) {
-        parser_log_error("expected input type ('axis', 'button' or 'hat')");
-        return false;
-    }
-
-    switch (input_type) {
-        case VJM_KW_AXIS:
-            mapping = get_axis_mapping(joymap);
-            break;
-
-        case VJM_KW_BUTTON:
-            mapping = get_button_mapping(joymap);
-            break;
-
-        case VJM_KW_HAT:
-            mapping = get_hat_mapping(joymap);
-            break;
-
-        default:
-            parser_log_error("unhandled input type %d!\n", (int)input_type);
-            mapping = NULL;
-            break;
-    }
-
+    mapping = get_input_mapping(joymap);
     if (mapping != NULL) {
         mapping->action            = JOY_ACTION_KEYBOARD;
         mapping->target.key.row    = row;
@@ -1045,7 +1025,6 @@ static bool handle_key_mapping(joymap_t *joymap)
  */
 static bool handle_action_mapping(joymap_t *joymap)
 {
-    keyword_id_t   input_type;
     joy_mapping_t *mapping;
     int            action_id;
     char          *action_name = NULL;
@@ -1057,32 +1036,7 @@ static bool handle_action_mapping(joymap_t *joymap)
         return false;
     }
 
-    /* input type */
-    input_type = get_keyword();
-    if (!kw_is_input_type(input_type)) {
-        parser_log_error("expected input type ('axis', 'button' or 'hat')");
-        return false;
-    }
-
-    switch (input_type) {
-        case VJM_KW_AXIS:
-            mapping = get_axis_mapping(joymap);
-            break;
-
-        case VJM_KW_BUTTON:
-            mapping = get_button_mapping(joymap);
-            break;
-
-        case VJM_KW_HAT:
-            mapping = get_hat_mapping(joymap);
-            break;
-
-        default:
-            parser_log_error("unhandled input type %d!\n", (int)input_type);
-            mapping = NULL;
-            break;
-    }
-
+    mapping = get_input_mapping(joymap);
     if (mapping != NULL) {
         mapping->action = JOY_ACTION_UI_ACTION;
         mapping->target.ui_action = action_id;
@@ -1110,26 +1064,21 @@ static bool handle_mapping(joymap_t *joymap)
             /* "pin <pin#> <input-type> <input-name> [<input-args>]" */
             result = handle_pin_mapping(joymap);
             break;
-
         case VJM_KW_POT:
             parser_log_warning("TODO: handle 'pot'");
             break;
-
         case VJM_KW_KEY:
             /* "key <column> <row> <flags> <input-name>" */
             result = handle_key_mapping(joymap);
             break;
-
         case VJM_KW_ACTION:
             result = handle_action_mapping(joymap);
             break;
-
         default:
             parser_log_error("expected either 'pin', 'pot', 'key' or 'action'");
             result = false;
             break;
     }
-
     return result;
 }
 
