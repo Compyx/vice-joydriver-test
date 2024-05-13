@@ -299,7 +299,6 @@ void joy_calibration_init(joy_calibration_t *calibration)
     calibration->deadzone   = 0;
     calibration->fuzz       = 0;
     calibration->threshold  = 0;
-    calibration->configured = false;
 }
 
 /** \brief  Initialize joystick mapping object to default values
@@ -336,6 +335,31 @@ void joy_axis_init(joy_axis_t *axis)
     joy_mapping_init(&(axis->mapping.pot));
 }
 
+
+/** \brief  Set calibration of axis to some sane values
+ *
+ * Set threshold of axes to the halfway point of the negative and positive
+ * directions, leading to 25% negative, 50% centered and 25% positive, like
+ * VICE does, disable deadzone and fuzz for now.
+ *
+ * \param[in]   axis    joy axis
+ */
+void joy_axis_auto_calibrate(joy_axis_t *axis)
+{
+    joy_mapping_t *negative = &axis->mapping.negative;
+    joy_mapping_t *positive = &axis->mapping.positive;
+    int32_t        minimum  = axis->minimum;
+    int32_t        maximum  = axis->maximum;
+    int32_t        centered = (maximum - minimum) / 2;
+
+    negative->calibration.deadzone  = minimum;
+    negative->calibration.fuzz      = 0;
+    negative->calibration.threshold = (centered - minimum) / 2;
+
+    positive->calibration.deadzone  = maximum;
+    positive->calibration.fuzz      = 0;
+    positive->calibration.threshold = maximum - ((maximum - centered) / 2);
+}
 
 /** \brief  Initialize joystick button object to default values
  *

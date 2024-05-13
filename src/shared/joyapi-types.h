@@ -76,7 +76,6 @@ typedef struct joy_calibration_s {
     int32_t deadzone;   /**< deadzone (for non-digital inputs) */
     int32_t fuzz;       /**< fuzz for input values */
     int32_t threshold;  /**< cutoff for range to digital conversion */
-    bool    configured; /**< calibration is set and must be applied */
 } joy_calibration_t;
 
 /** \brief  Mapping of host input to emulator input or action */

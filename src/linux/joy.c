@@ -230,6 +230,8 @@ static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
 
                 /* determine if we're dealing with a digital or an analog axis */
                 axis->digital = axis_is_digital(axis);
+                /* auto-calibrate */
+                joy_axis_auto_calibrate(axis);
 
                 num++;
             }

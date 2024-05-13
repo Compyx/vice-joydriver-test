@@ -55,6 +55,7 @@ joy_hat_t    *joy_hat_from_code   (joy_device_t *joydev, uint16_t code);
 joy_hat_t    *joy_hat_from_name   (joy_device_t *joydev, const char *name);
 
 joystick_axis_value_t joy_axis_value_from_hwdata(joy_axis_t *axis, int32_t hw_value);
+void          joy_axis_auto_calibrate(joy_axis_t *axis);
 
 void          joy_axis_event  (joy_device_t *joydev, joy_axis_t *axis, joystick_axis_value_t value);
 void          joy_button_event(joy_device_t *joydev, joy_button_t *button, int32_t value);
