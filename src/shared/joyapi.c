@@ -350,11 +350,11 @@ void joy_axis_auto_calibrate(joy_axis_t *axis)
     joy_mapping_t *positive = &axis->mapping.positive;
     int32_t        minimum  = axis->minimum;
     int32_t        maximum  = axis->maximum;
-    int32_t        centered = (maximum - minimum) / 2;
+    int32_t        centered = minimum + ((maximum - minimum) / 2);
 
     negative->calibration.deadzone  = minimum;
     negative->calibration.fuzz      = 0;
-    negative->calibration.threshold = (centered - minimum) / 2;
+    negative->calibration.threshold = minimum + ((centered - minimum) / 2);
 
     positive->calibration.deadzone  = maximum;
     positive->calibration.fuzz      = 0;
@@ -447,11 +447,9 @@ joystick_axis_value_t joy_axis_value_from_hwdata(joy_axis_t *axis, int32_t hw_va
             axis_value = JOY_AXIS_POSITIVE;
         }
     } else {
-        int32_t threshold = (axis->maximum - axis->minimum) / 4;   /* TODO: configurable in vjm */
-
-        if (hw_value < (axis->minimum + threshold)) {
+        if (hw_value <= axis->mapping.negative.calibration.threshold) {
             axis_value = JOY_AXIS_NEGATIVE;
-        } else if (hw_value > (axis->maximum - threshold)) {
+        } else if (hw_value >= axis->mapping.positive.calibration.threshold) {
             axis_value = JOY_AXIS_POSITIVE;
         }
     }

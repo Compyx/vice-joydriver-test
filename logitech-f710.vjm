@@ -22,8 +22,9 @@ map key 1   2   %01100001   button  "BTN_WEST"
 map action machine-power-cycle  button  "BTN_EAST"
 map action "drive-attach-8:0"   axis    "ABS_HAT0X" positive
 
-calibrate axis "ABS_X" negative threshold -25000 fuzz 256
-calibrate axis "ABS_X" positive threshold 25000 deadzone 32000
+# very sensitive:
+calibrate axis "ABS_X" negative threshold -10000
+calibrate axis "ABS_X" positive threshold  10000
 
 # error:
 #map key 0   0   -1          button  "BTN_EAST"
