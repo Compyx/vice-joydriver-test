@@ -294,11 +294,16 @@ const char *joy_device_get_hat_name(const joy_device_t *joydev, uint16_t hat)
 }
 
 
+/** \brief  Initialize calibration struct
+ *
+ * \param[in]   calibration input calibration struct
+ */
 void joy_calibration_init(joy_calibration_t *calibration)
 {
     calibration->deadzone   = 0;
     calibration->fuzz       = 0;
     calibration->threshold  = 0;
+    calibration->inverted   = false;
 }
 
 /** \brief  Initialize joystick mapping object to default values
@@ -308,9 +313,7 @@ void joy_calibration_init(joy_calibration_t *calibration)
 void joy_mapping_init(joy_mapping_t *mapping)
 {
     mapping->action   = JOY_ACTION_NONE;
-    mapping->inverted = false;
     memset(&(mapping->target), 0, sizeof mapping->target);
-    joy_calibration_init(&(mapping->calibration));
 }
 
 
@@ -330,9 +333,12 @@ void joy_axis_init(joy_axis_t *axis)
     axis->resolution  = 1;
     axis->granularity = 1;
     axis->digital     = false;
-    joy_mapping_init(&(axis->mapping.negative));
-    joy_mapping_init(&(axis->mapping.positive));
-    joy_mapping_init(&(axis->mapping.pot));
+    joy_mapping_init(&axis->mapping.negative);
+    joy_mapping_init(&axis->mapping.positive);
+    joy_mapping_init(&axis->mapping.pot);
+    joy_calibration_init(&axis->calibration.negative);
+    joy_calibration_init(&axis->calibration.positive);
+    joy_calibration_init(&axis->calibration.pot);
 }
 
 
@@ -346,19 +352,20 @@ void joy_axis_init(joy_axis_t *axis)
  */
 void joy_axis_auto_calibrate(joy_axis_t *axis)
 {
-    joy_mapping_t *negative = &axis->mapping.negative;
-    joy_mapping_t *positive = &axis->mapping.positive;
+    joy_calibration_t *negative = &axis->calibration.negative;
+    joy_calibration_t *positive = &axis->calibration.positive;
+
     int32_t        minimum  = axis->minimum;
     int32_t        maximum  = axis->maximum;
     int32_t        centered = minimum + ((maximum - minimum) / 2);
 
-    negative->calibration.deadzone  = minimum;
-    negative->calibration.fuzz      = 0;
-    negative->calibration.threshold = minimum + ((centered - minimum) / 2);
+    negative->deadzone  = minimum;
+    negative->fuzz      = 0;
+    negative->threshold = minimum + ((centered - minimum) / 2);
 
-    positive->calibration.deadzone  = maximum;
-    positive->calibration.fuzz      = 0;
-    positive->calibration.threshold = maximum - ((maximum - centered) / 2);
+    positive->deadzone  = maximum;
+    positive->fuzz      = 0;
+    positive->threshold = maximum - ((maximum - centered) / 2);
 }
 
 /** \brief  Initialize joystick button object to default values
@@ -370,7 +377,8 @@ void joy_button_init(joy_button_t *button)
     button->code = 0;
     button->name = NULL;
     button->prev = 0;
-    joy_mapping_init(&(button->mapping));
+    joy_mapping_init(&button->mapping);
+    joy_calibration_init(&button->calibration);
 }
 
 
@@ -390,6 +398,10 @@ void joy_hat_init(joy_hat_t *hat)
     joy_mapping_init(&(hat->mapping.down));
     joy_mapping_init(&(hat->mapping.left));
     joy_mapping_init(&(hat->mapping.right));
+    joy_calibration_init(&hat->calibration.up);
+    joy_calibration_init(&hat->calibration.down);
+    joy_calibration_init(&hat->calibration.left);
+    joy_calibration_init(&hat->calibration.right);
 }
 
 
@@ -447,9 +459,9 @@ joystick_axis_value_t joy_axis_value_from_hwdata(joy_axis_t *axis, int32_t hw_va
             axis_value = JOY_AXIS_POSITIVE;
         }
     } else {
-        if (hw_value <= axis->mapping.negative.calibration.threshold) {
+        if (hw_value <= axis->calibration.negative.threshold) {
             axis_value = JOY_AXIS_NEGATIVE;
-        } else if (hw_value >= axis->mapping.positive.calibration.threshold) {
+        } else if (hw_value >= axis->calibration.positive.threshold) {
             axis_value = JOY_AXIS_POSITIVE;
         }
     }

@@ -220,14 +220,14 @@ static bool list_axes(void)
                            axis->code, axis->minimum, axis->maximum);
                     printf("  negative calibration: deadzone: %"PRId32", fuzz: %"PRId32
                            ", threshold: %"PRId32"\n",
-                           axis->mapping.negative.calibration.deadzone,
-                           axis->mapping.negative.calibration.fuzz,
-                           axis->mapping.negative.calibration.threshold);
+                           axis->calibration.negative.deadzone,
+                           axis->calibration.negative.fuzz,
+                           axis->calibration.negative.threshold);
                     printf("  positive calibration: deadzone: %"PRId32", fuzz: %"PRId32
                            ", threshold: %"PRId32"\n",
-                           axis->mapping.positive.calibration.deadzone,
-                           axis->mapping.positive.calibration.fuzz,
-                           axis->mapping.positive.calibration.threshold);
+                           axis->calibration.positive.deadzone,
+                           axis->calibration.positive.fuzz,
+                           axis->calibration.positive.threshold);
                 } else {
                     printf("%2u: %s\n", a, axis->name);
                 }

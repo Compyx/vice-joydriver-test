@@ -8,7 +8,7 @@ syntax and the possibility to specify calibration of inputs.
 Very much a work in progress.
 
 
-## Current status (2024-05-09)
+## Current status (2024-05-14)
 
 ### Shared code
 
@@ -18,7 +18,8 @@ and UI actions.
 Still **TODO** are non-binary POT values (e.g. mapping axes to mouse or paddle
 inputs).
 
-Calibration of inputs is still **TODO**, but being worked on.
+Calibration of inputs is still **TODO**, but being worked on: handling of axes'
+custom threshold is implemented.
 
 ### SDL2
 

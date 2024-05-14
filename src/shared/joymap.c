@@ -817,6 +817,21 @@ static joy_mapping_t *get_axis_mapping(joymap_t *joymap)
     return mapping;
 }
 
+static joy_calibration_t *get_axis_calibration(joymap_t *joymap)
+{
+    joy_axis_t   *axis;
+    keyword_id_t  direction;
+
+    axis = get_axis_and_direction(joymap, &direction);
+    if (axis == NULL) {
+        return NULL;
+    } else if (direction == VJM_KW_NEGATIVE) {
+        return &axis->calibration.negative;
+    } else {
+        return &axis->calibration.positive;
+    }
+}
+
 /** \brief  Get button
  *
  * Parse current line and get button.
@@ -1143,11 +1158,11 @@ static bool handle_mapping(joymap_t *joymap)
  */
 static bool handle_axis_calibration(joymap_t *joymap)
 {
-    joy_mapping_t *mapping;
-    int            value;
+    joy_calibration_t *calibration;
+    int                value;
 
-    mapping = get_axis_mapping(joymap);
-    if (mapping == NULL) {
+    calibration = get_axis_calibration(joymap);
+    if (calibration == NULL) {
         return false;
     }
 
@@ -1160,7 +1175,7 @@ static bool handle_axis_calibration(joymap_t *joymap)
                     parser_log_error("expected integer value for threshold");
                     return false;
                 }
-                mapping->calibration.threshold = (int32_t)value;
+                calibration->threshold = (int32_t)value;
                 break;
             case VJM_KW_DEADZONE:
                 printf("%s(): got deadzone keyword\n", __func__);
@@ -1168,7 +1183,7 @@ static bool handle_axis_calibration(joymap_t *joymap)
                     parser_log_error("expected integer value for deadzone");
                     return false;
                 }
-                mapping->calibration.deadzone = (int32_t)value;
+                calibration->deadzone = (int32_t)value;
                 break;
             case VJM_KW_FUZZ:
                 printf("%s(): got fuzz keyword\n", __func__);
@@ -1176,7 +1191,7 @@ static bool handle_axis_calibration(joymap_t *joymap)
                     parser_log_error("expected integer value for fuzz");
                     return false;
                 }
-                mapping->calibration.fuzz = (int32_t)value;
+                calibration->fuzz = (int32_t)value;
                 break;
             default:
                 parser_log_error("expected either 'deadzone', 'fuzz' or 'threshold'");
@@ -1184,9 +1199,9 @@ static bool handle_axis_calibration(joymap_t *joymap)
         }
     }
 
-    printf("deadzone  = %d\n", mapping->calibration.deadzone);
-    printf("fuzz      = %d\n", mapping->calibration.fuzz);
-    printf("threshold = %d\n", mapping->calibration.threshold);
+    printf("deadzone  = %d\n", calibration->deadzone);
+    printf("fuzz      = %d\n", calibration->fuzz);
+    printf("threshold = %d\n", calibration->threshold);
 
     return true;
 }

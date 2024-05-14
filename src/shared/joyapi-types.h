@@ -76,6 +76,7 @@ typedef struct joy_calibration_s {
     int32_t deadzone;   /**< deadzone (for non-digital inputs) */
     int32_t fuzz;       /**< fuzz for input values */
     int32_t threshold;  /**< cutoff for range to digital conversion */
+    bool    inverted;   /**< input should be inverted before passing to emulation */
 } joy_calibration_t;
 
 /** \brief  Mapping of host input to emulator input or action */
@@ -86,9 +87,7 @@ typedef struct joy_mapping_s {
         joy_pot_axis_t pot;         /**< pot for JOY_ACTION_POT_AXIS */
         joy_key_map_t  key;         /**< key for JOY_ACTION_KEYBOARD */
         int            ui_action;   /**< UI action for JOY_ACTION_UI_ACTION */
-    } target;
-    bool               inverted;    /**< input should be inverted */ 
-    joy_calibration_t  calibration; /**< calibration data */
+    } target;                       /**< emulated input */
 } joy_mapping_t;
 
 /** \brief  Hat directions
@@ -136,10 +135,11 @@ typedef enum joystick_axis_value_e {
 
 /** \brief  Joystick button object */
 typedef struct joy_button_s {
-    uint16_t       code;        /**< event code */
-    char          *name;        /**< name */
-    int32_t        prev;        /**< previous value */
-    joy_mapping_t  mapping;     /**< input mapping */
+    uint16_t           code;        /**< event code */
+    char              *name;        /**< button name */
+    int32_t            prev;        /**< previous value */
+    joy_mapping_t      mapping;     /**< input mapping */
+    joy_calibration_t  calibration; /**< button calibration */
 } joy_button_t;
 
 /** \brief  Joystick axis object */
@@ -158,7 +158,12 @@ typedef struct joy_axis_s {
         joy_mapping_t negative;     /**< axis negative direction pin mapping */
         joy_mapping_t positive;     /**< axis positive direction pin mapping */
         joy_mapping_t pot;          /**< axis to POT mapping */
-    } mapping;                  /**< mappings */
+    } mapping;                  /**< mappings per direction/pot */
+    struct {
+        joy_calibration_t negative; /**< negative direction calibration */
+        joy_calibration_t positive; /**< positive direction calibration */
+        joy_calibration_t pot;      /**< potentiometer calibration */
+    } calibration;              /**< calibrations per direction/pot */
 } joy_axis_t;
 
 /** \brief  Joystick hat object
@@ -166,16 +171,22 @@ typedef struct joy_axis_s {
  * If \c code > 0 we use the hat map instead of the axes.
  */
 typedef struct joy_hat_s {
-    uint16_t             code;      /**< code in case of USB hat switch (BSD) */
-    char                *name;      /**< name */
-    int32_t              prev;      /**< previous value */
+    uint16_t             code;  /**< code in case of USB hat switch (BSD) */
+    char                *name;  /**< name */
+    int32_t              prev;  /**< previous value */
     joy_hat_direction_t  hat_map[JOY_HAT_NUM_DIRECTIONS];   /* hat mapping */
     struct {
-        joy_mapping_t up;       /**< up direction of hat */
-        joy_mapping_t down;     /**< down direction of hat */
-        joy_mapping_t left;     /**< left direction of hat */
-        joy_mapping_t right;    /**< right direction of hat */
-    } mapping;                      /**< mappings of four hat directions */
+        joy_mapping_t up;           /**< up direction of hat */
+        joy_mapping_t down;         /**< down direction of hat */
+        joy_mapping_t left;         /**< left direction of hat */
+        joy_mapping_t right;        /**< right direction of hat */
+    } mapping;                  /**< mappings of four hat directions */
+    struct {
+        joy_calibration_t up;       /**< up direction calibration */
+        joy_calibration_t down;     /**< down direction calibration */
+        joy_calibration_t left;     /**< left direction calibration */
+        joy_calibration_t right;    /**< right direction calibration */
+    } calibration;              /**< calibration for hat directions */
 } joy_hat_t;
 
 /** \brief  Joystick device object */
