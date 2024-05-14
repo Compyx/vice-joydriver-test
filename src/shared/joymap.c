@@ -747,6 +747,47 @@ static bool get_vjm_version(joymap_t *joymap)
     return true;
 }
 
+
+/** \brief  Get axis from current line
+ *
+ * Parse current line for axis name and direction.
+ *
+ * \param[in]   joymap      joymap
+ * \param[out]  direction   axis direction
+ *
+ * \return  axis or \c NULL on failure
+ */
+static joy_axis_t *get_axis_and_direction(joymap_t     *joymap,
+                                          keyword_id_t *direction)
+{
+    joy_axis_t *axis;
+    char       *name;
+
+    /* axis name */
+    if (!get_quoted_arg(&name)) {
+        parser_log_error("expected axis name");
+        return NULL;
+    }
+    axis = joy_axis_from_name(joymap->joydev, name);
+    if (axis == NULL) {
+        parser_log_error("invalid axis name: '%s'", name);
+        lib_free(name);
+        return NULL;
+    }
+
+    /* axis direction */
+    *direction = get_keyword();
+    if (!kw_is_axis_direction(*direction)) {
+        parser_log_error("expected axis direction ('negative' or 'positive')"
+                         " after axis name, got '%s'",
+                         pstate.curpos);
+        lib_free(name);
+        return NULL;
+    }
+
+    return axis;
+}
+
 /** \brief  Get mapping for axis
  *
  * Parse current line for axis name and look up axis mapping in \a joymap.
@@ -760,28 +801,10 @@ static joy_mapping_t *get_axis_mapping(joymap_t *joymap)
 {
     joy_mapping_t *mapping;
     joy_axis_t    *axis;
-    char          *name;
     keyword_id_t   direction;
 
-    /* input name */
-    if (!get_quoted_arg(&name)) {
-        parser_log_error("expected axis name");
-        return NULL;
-    }
-    /* input direction */
-    direction = get_keyword();
-    if (!kw_is_axis_direction(direction)) {
-        parser_log_error("expected axis direction argument ('negative' or"
-                         " 'positive'), got '%s'",
-                         pstate.curpos);
-        lib_free(name);
-        return NULL;
-    }
-
-    axis = joy_axis_from_name(joymap->joydev, name);
+    axis = get_axis_and_direction(joymap, &direction);
     if (axis == NULL) {
-        parser_log_error("invalid axis name: '%s'", name);
-        lib_free(name);
         return NULL;
     }
     if (direction == VJM_KW_NEGATIVE) {
@@ -790,10 +813,33 @@ static joy_mapping_t *get_axis_mapping(joymap_t *joymap)
         mapping = &(axis->mapping.positive);
     }
 
-    msg_debug("name = %s, direction = %s\n", name, kw_name(direction));
-    lib_free(name);
-
+    msg_debug("name = %s, direction = %s\n", axis->name, kw_name(direction));
     return mapping;
+}
+
+/** \brief  Get button
+ *
+ * Parse current line and get button.
+ *
+ * \param[in]   joymap  joymap
+ *
+ * \return  button or \c NULL on error
+ */
+static joy_button_t *get_button(joymap_t *joymap)
+{
+    joy_button_t *button;
+    char         *name;
+
+    if (!get_quoted_arg(&name)) {
+        parser_log_error("expected button name");
+        return NULL;
+    }
+    button = joy_button_from_name(joymap->joydev, name);
+    if (button == NULL) {
+        parser_log_error("invalid button name: '%s'", name);
+    }
+    lib_free(name);
+    return button;
 }
 
 /** \brief  Get mapping for button
@@ -808,24 +854,52 @@ static joy_mapping_t *get_axis_mapping(joymap_t *joymap)
 static joy_mapping_t *get_button_mapping(joymap_t *joymap)
 {
     joy_button_t *button;
-    char         *name;
 
-    if (!get_quoted_arg(&name)) {
-        parser_log_error("expected button name");
+    button = get_button(joymap);
+    if (button == NULL) {
         return NULL;
     }
+    return &(button->mapping);
+}
 
-    button = joy_button_from_name(joymap->joydev, name);
-    if (button == NULL) {
-        parser_log_error("invalid button name: '%s'", name);
+/** \brief  Get hat and direction
+ *
+ * Parse current line for hat name and direction.
+ *
+ * \param[in]   joymap      joymap
+ * \param[out]  direction   hat direction
+ *
+ * \return  hat or \c NULL on error
+ */
+static joy_hat_t *get_hat_and_direction(joymap_t     *joymap,
+                                        keyword_id_t *direction)
+{
+    joy_hat_t *hat;
+    char      *name;
+
+    /* hat name */
+    if (!get_quoted_arg(&name)) {
+        parser_log_error("expected hat name");
+        return NULL;
+    }
+    hat = joy_hat_from_name(joymap->joydev, name);
+    if (hat == NULL) {
+        parser_log_error("invalid hat name: '%s'", name);
         lib_free(name);
         return NULL;
     }
 
-    msg_debug("name = %s\n", name);
-    lib_free(name);
+    /* hat direction */
+    *direction = get_keyword();
+    if (!kw_is_joystick_direction(*direction)) {
+        parser_log_error("invalid direction '%s', expected 'up', 'down', 'left'"
+                         " or 'right'",
+                         *direction == VJM_KW_INVALID ? pstate.curpos : kw_name(*direction));
+        hat = NULL;
+    }
 
-    return &(button->mapping);
+    lib_free(name);
+    return hat;
 }
 
 /** \brief  Get mapping for hat
@@ -840,29 +914,10 @@ static joy_mapping_t *get_button_mapping(joymap_t *joymap)
 static joy_mapping_t *get_hat_mapping(joymap_t *joymap)
 {
     joy_hat_t     *hat;
-    char          *name;
-    keyword_id_t   direction;
-    joy_mapping_t *mapping = NULL;
+    joy_mapping_t *mapping   = NULL;
+    keyword_id_t   direction = VJM_KW_INVALID;
 
-    if (!get_quoted_arg(&name)) {
-        parser_log_error("exected hat name");
-        return NULL;
-    }
-
-    direction = get_keyword();
-    if (!kw_is_joystick_direction(direction)) {
-        parser_log_error("invalid direction '%s', expected 'up', 'down', 'left'"
-                         " or 'right'");
-        lib_free(name);
-        return NULL;
-    }
-
-    hat = joy_hat_from_name(joymap->joydev, name);
-    if (hat == NULL) {
-        parser_log_error("invalid hat name: '%s'", name);
-        lib_free(name);
-        return NULL;
-    }
+    hat = get_hat_and_direction(joymap, &direction);
 
     switch (direction) {
         case VJM_KW_UP:
@@ -882,10 +937,6 @@ static joy_mapping_t *get_hat_mapping(joymap_t *joymap)
             mapping = NULL;
             break;
     }
-
-    msg_debug("name = %s\n", name);
-    lib_free(name);
-
     return mapping;
 }
 
