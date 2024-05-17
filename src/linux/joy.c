@@ -23,34 +23,32 @@
 #include "lib.h"
 
 
+/* defined in main.c, set by --debug and --verbose */
 extern bool debug;
 extern bool verbose;
 
 
+/** \brief  Initial size of devices array */
 #define DEVICES_INITIAL_SIZE    16
-#define BUTTONS_INITIAL_SIZE    32
-#define AXES_INITIAL_SIZE       16
-#define HATS_INITIAL_SIZE       4
 
+/** \brief  Initial size of buttons array */
+#define BUTTONS_INITIAL_SIZE    32
+
+/** \brief  Initial size of axes array */
+#define AXES_INITIAL_SIZE       16
+
+/** \brief  Root directory for the event interface devices */
 #define NODE_ROOT               "/dev/input"
+
+/** \brief  Length of #NODE_ROOT */
 #define NODE_ROOT_LEN           10
 
+/** \brief  Prefix of event devices */
 #define NODE_PREFIX             "event"
+
+/** \brief  Length of #NODE_PREFIX */
 #define NODE_PREFIX_LEN         5
 
-
-/** \brief  Hat event codes for both axes
- */
-typedef struct {
-    uint16_t x; /* X axis */
-    uint16_t y; /* Y axis */
-} hat_evcode_t;
-
-/** \brief  Mapping event codes to names */
-typedef struct {
-    unsigned int  code;
-    const char   *name;
-} ev_code_name_t;
 
 /** \brief  Hardware-specific data
  *
@@ -87,6 +85,10 @@ typedef struct hwdata_s {
 #define IS_BUTTON(code) ((code) >= BTN_JOYSTICK && (code) <= BTN_THUMBR)
 
 
+/** \brief  Allocate and initialize driver-specific data object
+ *
+ * \return  new driver-specific data object
+ */
 static hwdata_t *hwdata_new(void)
 {
     hwdata_t *hwdata= lib_malloc(sizeof *hwdata);
@@ -96,6 +98,12 @@ static hwdata_t *hwdata_new(void)
     return hwdata;
 }
 
+/** \brief  Free driver-specific data
+ *
+ * Also close any open file descriptor and libevdev instance.
+ *
+ * \param[in]   hwdata  driver-specific data
+ */
 static void hwdata_free(void *hwdata)
 {
     hwdata_t *hw = hwdata;
@@ -111,6 +119,12 @@ static void hwdata_free(void *hwdata)
     lib_free(hwdata);
 }
 
+/** \brief  Filter callback for scandir()
+ *
+ * \param[in]   de  dirent
+ *
+ * \return  \c 1 if the filename matches "event?*", \c 0 otherwise
+ */
 static int node_filter(const struct dirent *de)
 {
     const char *name;
@@ -125,6 +139,14 @@ static int node_filter(const struct dirent *de)
     return 0;
 }
 
+/** \brief  Generate full path from node in /dev/input/
+ *
+ * Concatenate "/dev/input/" and \a node and return heap allocated string.
+ *
+ * \return  full path to input nod
+ *
+ * \note    free result after use with \c lib_malloc()
+ */
 static char *node_full_path(const char *node)
 {
     size_t  nlen;
@@ -138,6 +160,18 @@ static char *node_full_path(const char *node)
     return path;
 }
 
+/** \brief  Scan buttons of evdev device and store in joydev
+ *
+ * Scan device for valid button codes. Unlike other APIs like DirectInput, SDL
+ * or BSD's usbhid, the event interface buttons aren't numbered sequentially
+ * starting from 0, but have predefined event codes (these are defined in
+ * \c /usr/include/linux/input-event-codes). So to build a list of buttons we
+ * iterate a range of event codes (\c BTN_MISC (0x100) to \c KEY_MAX (0x2ff)
+ * and check if the device has an event for these codes.
+ *
+ * \param[in]   joydev  joystick device
+ * \param[in]   evdev   libevdev instance
+ */
 static void scan_buttons(joy_device_t *joydev, struct libevdev *evdev)
 {
     uint32_t num = 0;
@@ -169,7 +203,15 @@ static void scan_buttons(joy_device_t *joydev, struct libevdev *evdev)
     joydev->num_buttons = num;
 }
 
-
+/** \brief  Determine if an axis is digital
+ *
+ * Determine if \a axis is digital, meaning it reports only three different
+ * values: negative, centered and positive.
+ *
+ * \param[in]   axis
+ *
+ * \return  \c true if digital
+ */
 static bool axis_is_digital(joy_axis_t *axis)
 {
     if (axis->minimum == -1 && axis->maximum == 1) {
@@ -188,7 +230,14 @@ static bool axis_is_digital(joy_axis_t *axis)
     return false;
 }
 
-
+/** \brief  Scan axes of evdev device and store in joydev
+ *
+ * Iterate event codes for axes and store information on absolute axes supported
+ * by the device.
+ *
+ * \param[in]   joydev  joystick device
+ * \param[in]   evdev   libevdev instance
+ */
 static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
 {
     uint32_t num = 0;
@@ -240,6 +289,15 @@ static void scan_axes(joy_device_t *joydev, struct libevdev *evdev)
     joydev->num_axes = num;
 }
 
+/** \brief  Try to obtain information on a possible input device
+ *
+ * Try to open \c node and obtain a device's name, vendor ID, product ID and
+ * its supported input events.
+ *
+ * \param[in]   node    path in the file system of an input device
+ *
+ * \return  new joystick device or \c NULL on failure
+ */
 static joy_device_t *get_device_data(const char *node)
 {
     struct libevdev *evdev;
@@ -284,6 +342,12 @@ static joy_device_t *get_device_data(const char *node)
 }
 
 
+/** \brief  Create list of input devices
+ *
+ * \param[out]  devices list of supported input devices
+ *
+ * \return  number of devices in \a devices or -1 on error
+ */
 int joy_arch_device_list_init(joy_device_t ***devices)
 {
     struct dirent **namelist = NULL;
@@ -316,20 +380,6 @@ int joy_arch_device_list_init(joy_device_t ***devices)
                 joylist       = lib_realloc(joylist,
                                             joylist_size * sizeof *joylist);
             }
-#if 0
-            printf("node   : %s\n"
-                   "name   : \"%s\"\n"
-                   "vendor : %04"PRIx16"\n"
-                   "product: %04"PRIx16"\n"
-                   "buttons: %"PRIu32"\n"
-                   "axes   : %"PRIu32"\n",
-                dev->node,
-                   dev->name,
-                   dev->vendor,
-                dev->product,
-                   dev->num_buttons,
-                   dev->num_axes);
-#endif
             /* determine capabilities for emulated devices */
             joy_device_set_capabilities(dev);
             joylist[joylist_index++] = dev;
@@ -343,7 +393,6 @@ int joy_arch_device_list_init(joy_device_t ***devices)
     *devices               = joylist;
     return (int)joylist_index;
 }
-
 
 
 /** \brief  Driver \c open method
@@ -407,6 +456,11 @@ static void joydev_close(joy_device_t *joydev)
     }
 }
 
+/** \brief  Dispatch input event to generic VICE joystick code
+ *
+ * \param[in]   joydev  joystick device
+ * \param[in]   event   input event
+ */
 static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
 {
     joy_axis_t            *axis;
@@ -440,6 +494,15 @@ static void poll_dispatch_event(joy_device_t *joydev, struct input_event *event)
     }
 }
 
+/** \brief  Driver poll method
+ *
+ * Poll \a joydev for pending events and pass them to the generic joystick
+ * code.
+ *
+ * \param[in]   joydev  joystick device
+ *
+ * \return  \c true to keep polling, \a false on fatal error
+ */
 static bool joydev_poll(joy_device_t *joydev)
 {
     hwdata_t           *hwdata;
@@ -482,6 +545,12 @@ static bool joydev_poll(joy_device_t *joydev)
 }
 
 
+/** \brief  Initialize driver-specific data
+ *
+ * Register driver with VICE.
+ *
+ * \return  \c true on success (currently always returns \c true)
+ */
 bool joy_arch_init(void)
 {
     joy_driver_t driver = {
@@ -496,12 +565,26 @@ bool joy_arch_init(void)
 }
 
 
+/** \brief  Clean up driver-specific data
+ */
 void joy_arch_shutdown(void)
 {
     /* NOP for now */
 }
 
 
+/** \brief  Create default mapping for a joystick device
+ *
+ * Create mapping of four joystick directions and one fire button.
+ *
+ * \param[in]   joydev  joystick device
+ *
+ * \return  \c true on success
+ *
+ * \note    currently always returns \c true, perhaps this function could
+ *          return \c false if \a joydev doesn't have the required inputs
+ *          for a valid mapping?
+ */
 bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
 {
     joy_mapping_t *mapping;
