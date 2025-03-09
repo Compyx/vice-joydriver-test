@@ -62,13 +62,13 @@ typedef struct dpad_pin_s {
     int      pin;
 } dpad_pin_t;
 
-typedef struct joy_priv_s {
+typedef struct joy_hwdata_s {
     void          *buffer;
     report_desc_t  rep_desc;
     ssize_t        rep_size;
     int            rep_id;
     int            fd;
-} joy_priv_t;
+} joy_hwdata_t;
 
 
 static const dpad_pin_t dpad_pins[4] = {
@@ -78,33 +78,33 @@ static const dpad_pin_t dpad_pins[4] = {
     { HUG_D_PAD_RIGHT, JOYSTICK_DIRECTION_RIGHT }
 };
 
-static joy_priv_t *joy_priv_new(void)
+static joy_hwdata_t *joy_hwdata_new(void)
 {
-    joy_priv_t *priv = lib_malloc(sizeof *priv);
+    joy_hwdata_t *hwdata = lib_malloc(sizeof *hwdata);
 
-    priv->fd       = -1;
-    priv->rep_id   = 0;
-    priv->rep_size = 0;
-    priv->buffer   = NULL;
-    priv->rep_desc = NULL;
+    hwdata->fd       = -1;
+    hwdata->rep_id   = 0;
+    hwdata->rep_size = 0;
+    hwdata->buffer   = NULL;
+    hwdata->rep_desc = NULL;
 
-    return priv;
+    return hwdata;
 }
 
-static void joy_priv_free(void *priv)
+static void joy_hwdata_free(void *hwdata)
 {
-    joy_priv_t *pr = priv;
-    if (pr != NULL) {
-        if (pr->fd >= 0) {
-            close(pr->fd);
+    joy_hwdata_t *hw = hwdata;
+    if (hw != NULL) {
+        if (hw->fd >= 0) {
+            close(hw->fd);
         }
-        if (pr->buffer != NULL) {
-            lib_free(pr->buffer);
+        if (hw->buffer != NULL) {
+            lib_free(hw->buffer);
         }
-        if (pr->rep_desc != NULL) {
-            hid_dispose_report_desc(pr->rep_desc);
+        if (hw->rep_desc != NULL) {
+            hid_dispose_report_desc(hw->rep_desc);
         }
-        lib_free(pr);
+        lib_free(hw);
     }
 }
 
@@ -238,7 +238,7 @@ static void add_joy_hat(hat_iter_t *iter, const struct hid_item *item)
 static joy_device_t *get_device_data(const char *node)
 {
     joy_device_t           *joydev;
-    joy_priv_t             *priv;
+    joy_hwdata_t           *hwdata;
     struct usb_device_info  devinfo;
     report_desc_t           report;
     int                     rep_id;
@@ -379,13 +379,14 @@ static joy_device_t *get_device_data(const char *node)
     joydev->hats         = hat_iter.list;
     joydev->num_hats     = (uint32_t)hat_iter.index;
 
-    priv           = joy_priv_new();
-    priv->fd       = -1;
-    priv->rep_id   = rep_id;
-    priv->rep_size = rep_size;
-    priv->buffer   = lib_malloc((size_t)rep_size);
-    priv->rep_desc = report;
-    joydev->priv   = priv;
+    hwdata           = joy_hwdata_new();
+    hwdata->fd       = -1;
+    hwdata->rep_id   = rep_id;
+    hwdata->rep_size = rep_size;
+    hwdata->buffer   = lib_malloc((size_t)rep_size);
+    hwdata->rep_desc = report;
+
+    joydev->hwdata = hwdata;
 
     close(fd);
     return joydev;
@@ -443,8 +444,8 @@ int joy_arch_device_list_init(joy_device_t ***devices)
 
 static bool joydev_open(joy_device_t *joydev)
 {
-    joy_priv_t *priv;
-    int         fd;
+    joy_hwdata_t *hwdata = joydev->hwdata;
+    int           fd;
 
     fd = open(joydev->node, O_RDONLY|O_NONBLOCK);
     if (fd < 0) {
@@ -452,35 +453,33 @@ static bool joydev_open(joy_device_t *joydev)
         return false;
     }
 
-    priv = joydev->priv;
-    priv->fd     = fd;
+    hwdata->fd = fd;
     return true;
 }
 
 static void joydev_close(joy_device_t *joydev)
 {
-    joy_priv_t *priv = joydev->priv;
+    joy_hwdata_t *hwdata = joydev->hwdata;
 
-    if (priv != NULL && priv->fd >= 0) {
-        close(priv->fd);
+    if (hwdata != NULL && hwdata->fd >= 0) {
+        close(hwdata->fd);
     }
 }
 
 static bool joydev_poll(joy_device_t *joydev)
 {
-    joy_priv_t *priv;
-    ssize_t     rsize;
+    joy_hwdata_t *hwdata = joydev->hwdata;
+    ssize_t       rsize;
 
-    priv = joydev->priv;
-    if (priv == NULL || priv->fd < 0) {
+    if (hwdata == NULL || hwdata->fd < 0) {
         return false;
     }
 
-    while ((rsize = read(priv->fd, priv->buffer, (size_t)(priv->rep_size))) == priv->rep_size) {
+    while ((rsize = read(hwdata->fd, hwdata->buffer, (size_t)(hwdata->rep_size))) == hwdata->rep_size) {
         struct hid_item  item;
         struct hid_data *data;
 
-        data = hid_start_parse(priv->rep_desc, 1 << hid_input, priv->rep_id);
+        data = hid_start_parse(hwdata->rep_desc, 1 << hid_input, hwdata->rep_id);
         if (data == NULL) {
             fprintf(stderr, "%s(): hid_start_parse() failed: %d (%s).\n",
                     __func__, errno, strerror(errno));
@@ -488,7 +487,7 @@ static bool joydev_poll(joy_device_t *joydev)
         }
 
         while (hid_get_item(data, &item) > 0) {
-            int32_t      value = hid_get_data(priv->buffer, &item);
+            int32_t      value = hid_get_data(hwdata->buffer, &item);
             int          usage = HID_USAGE(item.usage);
             unsigned int page  = HID_PAGE(item.usage);
 
@@ -553,10 +552,10 @@ static bool joydev_poll(joy_device_t *joydev)
 bool joy_arch_init(void)
 {
     joy_driver_t driver = {
-        .open  = joydev_open,
-        .close = joydev_close,
-        .poll  = joydev_poll,
-        .priv_free = joy_priv_free
+        .open        = joydev_open,
+        .close       = joydev_close,
+        .poll        = joydev_poll,
+        .hwdata_free = joy_hwdata_free
     };
 
     joy_driver_register(&driver);
@@ -600,10 +599,10 @@ bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
             msg_error("expected to find Y axis (0x%02x)\n", HUG_Y);
             return false;
         }
-        axis->mapping.pin[JOY_AXIS_IDX_NEG].action     = JOY_ACTION_JOYSTICK;
-        axis->mapping.pin[JOY_AXIS_IDX_NEG].target.pin = JOYSTICK_DIRECTION_UP;
-        axis->mapping.pin[JOY_AXIS_IDX_POS].action     = JOY_ACTION_JOYSTICK;
-        axis->mapping.pin[JOY_AXIS_IDX_POS].target.pin = JOYSTICK_DIRECTION_DOWN;
+        axis->mapping.negative.action     = JOY_ACTION_JOYSTICK;
+        axis->mapping.negative.target.pin = JOYSTICK_DIRECTION_UP;
+        axis->mapping.positive.action     = JOY_ACTION_JOYSTICK;
+        axis->mapping.positive.target.pin = JOYSTICK_DIRECTION_DOWN;
 
         /* X: left/right */
         axis = joy_axis_from_code(joydev, HUG_X);
@@ -611,10 +610,10 @@ bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
             msg_error("expected to find X axis (0x%02x)\n", HUG_X);
             return false;
         }
-        axis->mapping.pin[JOY_AXIS_IDX_NEG].action     = JOY_ACTION_JOYSTICK;
-        axis->mapping.pin[JOY_AXIS_IDX_NEG].target.pin = JOYSTICK_DIRECTION_LEFT;
-        axis->mapping.pin[JOY_AXIS_IDX_POS].action     = JOY_ACTION_JOYSTICK;
-        axis->mapping.pin[JOY_AXIS_IDX_POS].target.pin = JOYSTICK_DIRECTION_RIGHT;
+        axis->mapping.negative.action     = JOY_ACTION_JOYSTICK;
+        axis->mapping.negative.target.pin = JOYSTICK_DIRECTION_LEFT;
+        axis->mapping.positive.action     = JOY_ACTION_JOYSTICK;
+        axis->mapping.positive.target.pin = JOYSTICK_DIRECTION_RIGHT;
     }
 
     /* map Button_1 to fire */
@@ -627,4 +626,9 @@ bool joy_arch_device_create_default_mapping(joy_device_t *joydev)
     button->mapping.target.pin = 16;
 
     return true;
+}
+
+
+void joy_arch_shutdown(void)
+{
 }
