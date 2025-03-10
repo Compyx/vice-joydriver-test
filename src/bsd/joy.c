@@ -266,7 +266,7 @@ static joy_device_t *get_device_data(const char *node)
     }
 
     /* get report ID if possible, otherwise assume 0 */
-#ifdef USE_GET_REPORT_ID
+#ifdef USB_GET_REPORT_ID
     if (ioctl(fd, USB_GET_REPORT_ID, &rep_id) < 0) {
         fprintf(stderr, "%s(): could not get USB report id: %s.\n",
                 __func__, strerror(errno));
